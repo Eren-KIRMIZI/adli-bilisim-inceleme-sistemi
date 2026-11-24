@@ -1,15 +1,16 @@
 """Main application shell window coordinating topbar, sidebar, pages, and statusbar."""
 
-import os
 from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, 
-    QStackedWidget, QApplication, QMessageBox
+    QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
+    QStackedWidget, QApplication
 )
-from PySide6.QtCore import Qt
 from src.ui.shell.topbar import Topbar
 from src.ui.shell.sidebar import Sidebar
 from src.ui.shell.statusbar import Statusbar
 from src.ui.styles.tokens import build_qss
+from src.case_engine.case_service import CaseService
+from src.evidence_engine.evidence_service import EvidenceService
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -18,10 +19,13 @@ class MainWindow(QMainWindow):
         self.resize(1400, 880)
         self.setMinimumSize(1100, 700)
 
+        self.active_case_id = None
+        self.active_evidence_id = None
+
         # Central Container
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        
+
         root_layout = QVBoxLayout(central_widget)
         root_layout.setContentsMargins(0, 0, 0, 0)
         root_layout.setSpacing(0)
@@ -52,8 +56,9 @@ class MainWindow(QMainWindow):
         root_layout.addWidget(self.statusbar)
 
         # Initialize and connect pages
-        self.sidebar.pageChanged.connect(self.stack.setCurrentIndex)
+        self.sidebar.pageChanged.connect(self._on_page_changed)
         self._init_pages()
+        self._sync_initial_context()
 
         # Apply default Light theme
         self.set_theme("light")
@@ -89,6 +94,10 @@ class MainWindow(QMainWindow):
         self.reports_page = ReportsPage()
         self.settings_page = make_page("Ayarlar ve Lisanslar")
 
+        # Global case & evidence synchronization signals
+        self.cases_page.activeCaseSelected.connect(self._on_active_case_changed)
+        self.evidence_page.activeEvidenceSelected.connect(self._on_active_evidence_changed)
+
         pages = [
             self.dashboard_page,
             self.cases_page,
@@ -103,11 +112,41 @@ class MainWindow(QMainWindow):
             self.timeline_page,
             self.relations_page,
             self.reports_page,
-            self.settings_page
+            self.settings_page,
         ]
 
         for p in pages:
             self.stack.addWidget(p)
+
+    def _sync_initial_context(self):
+        cases = CaseService().list_cases()
+        if cases:
+            c = cases[0]
+            self._on_active_case_changed(c.id, c.case_number, c.title)
+            evds = EvidenceService().list_evidence(case_id=c.id)
+            if evds:
+                e = evds[0]
+                self._on_active_evidence_changed(e.id, f"{e.evidence_number} ({e.brand} {e.model})")
+
+    def _on_active_case_changed(self, case_id: int, case_number: str, title: str):
+        self.active_case_id = case_id
+        self.topbar.set_active_case(case_number, title)
+        evd_count = len(EvidenceService().list_evidence(case_id=case_id))
+        self.statusbar.set_case_info(f"Aktif Vaka: {case_number} • Delil Sayısı: {evd_count}")
+        self.dashboard_page.set_active_case(case_id)
+        self.evidence_page.set_case_context(case_id)
+
+    def _on_active_evidence_changed(self, evidence_id: int, label: str):
+        self.active_evidence_id = evidence_id
+        self.topbar.set_active_evidence(label)
+
+    def _on_page_changed(self, index: int):
+        self.stack.setCurrentIndex(index)
+        page = self.stack.widget(index)
+        if hasattr(page, "refresh_data"):
+            page.refresh_data()
+        elif hasattr(page, "refresh_records"):
+            page.refresh_records()
 
     def set_theme(self, theme_name: str):
         qss_code = build_qss(theme_name)
@@ -116,5 +155,4 @@ class MainWindow(QMainWindow):
             app.setStyleSheet(qss_code)
 
     def _on_case_switch_clicked(self):
-        # Switch to Cases page (index 1)
         self.sidebar.select_page(1)

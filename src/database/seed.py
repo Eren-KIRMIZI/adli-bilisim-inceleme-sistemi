@@ -2,13 +2,35 @@
 
 from datetime import datetime, timedelta
 import json
-from src.database.models import init_db, Case, Evidence, UsbDeviceRecord, AuditLog, ForensicArtifact
+from src.database.models import (
+    init_db, Case, Evidence, UsbDeviceRecord, AuditLog, ChainOfCustodyEntry
+)
 
 def seed_database_if_empty(db_path="data/forensics.db"):
     Session = init_db(db_path)
     with Session() as s:
         if s.query(Case).first() is not None:
-            return  # Already seeded
+            # Ensure chain_of_custody has initial records if upgrading an existing seeded DB
+            if s.query(ChainOfCustodyEntry).first() is None:
+                evds = s.query(Evidence).all()
+                for evd in evds:
+                    s.add(ChainOfCustodyEntry(
+                        case_id=evd.case_id,
+                        evidence_id=evd.id,
+                        timestamp=evd.acquire_date or datetime.utcnow(),
+                        action_type="Teslim Alındı & İmaj Doğrulandı",
+                        delivered_by="Olay Yeri Ekibi",
+                        received_by=evd.custodian or "Adli Bilişim Uzmanı",
+                        location="Adli Bilişim Laboratuvarı - Kasa 01",
+                        acquire_method="Fiziksel Adli İmaj (Salt Okunur)",
+                        write_blocker_info=evd.acquire_tool or "Donanımsal Yazma Engelleyici",
+                        sha256_at_event=evd.sha256_hash,
+                        sha512_at_event=evd.sha512_hash,
+                        verification_status="Doğrulandı",
+                        notes=evd.notes or "İlk kabul sırasında hash bütünlüğü doğrulandı."
+                    ))
+                s.commit()
+            return
 
         # 1. Create Primary Forensic Case
         case = Case(
@@ -79,7 +101,70 @@ def seed_database_if_empty(db_path="data/forensics.db"):
         s.add_all([e1, e2, e3])
         s.flush()
 
-        # 3. Create USB Forensic Records
+        # 3. Chain of Custody Records
+        custody_records = [
+            ChainOfCustodyEntry(
+                case_id=case.id,
+                evidence_id=e1.id,
+                timestamp=datetime.utcnow() - timedelta(days=2),
+                action_type="Teslim Alındı",
+                delivered_by="Güvenlik Amiri M. Demir",
+                received_by="Adli Bilişim Uzmanı E. Kırmızı",
+                location="Laboratuvar Delil Kabul Masası",
+                acquire_method="Mühürlü Delil Torbası #TB-991",
+                write_blocker_info="Tableau T8u USB 3.0 Forensic Bridge",
+                sha256_at_event=e1.sha256_hash,
+                sha512_at_event=e1.sha512_hash,
+                verification_status="Doğrulandı",
+                notes="Fiziksel mühür sağlam. Salt-okunur adli imaj alma başlatıldı."
+            ),
+            ChainOfCustodyEntry(
+                case_id=case.id,
+                evidence_id=e1.id,
+                timestamp=datetime.utcnow() - timedelta(days=2, hours=-2),
+                action_type="İmaj Alındı & Hash Doğrulandı",
+                delivered_by="Adli Bilişim Uzmanı E. Kırmızı",
+                received_by="Çalışma Kopyası Sunucusu (Salt Okunur)",
+                location="Analiz İstasyonu #02",
+                acquire_method="RAW Bitstream İmaj (.dd)",
+                write_blocker_info="Tableau T8u Hardware Write-Blocker",
+                sha256_at_event=e1.sha256_hash,
+                sha512_at_event=e1.sha512_hash,
+                verification_status="Doğrulandı",
+                notes="Kaynak ve hedef SHA-256 / SHA-512 hash değerleri %100 eşleşti."
+            ),
+            ChainOfCustodyEntry(
+                case_id=case.id,
+                evidence_id=e2.id,
+                timestamp=datetime.utcnow() - timedelta(days=1),
+                action_type="Teslim Alındı & Hash Doğrulandı",
+                delivered_by="Olay Yeri Müdahale Ekibi",
+                received_by="Adli Bilişim Uzmanı E. Kırmızı",
+                location="Laboratuvar Delil Kasası #01",
+                acquire_method="Fiziksel Teslim",
+                write_blocker_info="Tableau T8u",
+                sha256_at_event=e2.sha256_hash,
+                verification_status="Doğrulandı",
+                notes="Delil muhafaza zinciri başlatıldı."
+            ),
+            ChainOfCustodyEntry(
+                case_id=case.id,
+                evidence_id=e3.id,
+                timestamp=datetime.utcnow() - timedelta(hours=14),
+                action_type="İncelemeye Çıktı",
+                delivered_by="Delil Kasası #01",
+                received_by="Adli Bilişim Uzmanı E. Kırmızı",
+                location="Analiz İstasyonu #01",
+                acquire_method="Atola TaskForce E01",
+                write_blocker_info="Atola Entegre Yazma Engelleyici",
+                sha256_at_event=e3.sha256_hash,
+                verification_status="Doğrulandı",
+                notes="Çalışma kopyası üzerinde dosya sistemi ve USB korelasyonu yürütülüyor."
+            ),
+        ]
+        s.add_all(custody_records)
+
+        # 4. Create USB Forensic Records
         usb1 = UsbDeviceRecord(
             case_id=case.id,
             evidence_id=e1.id,
@@ -203,7 +288,7 @@ def seed_database_if_empty(db_path="data/forensics.db"):
 
         s.add_all([usb1, usb2, usb3, usb_suspicious])
 
-        # 4. Create Audit Logs
+        # 5. Create Audit Logs
         logs = [
             AuditLog(
                 case_id=case.id,
@@ -239,5 +324,4 @@ def seed_database_if_empty(db_path="data/forensics.db"):
             )
         ]
         s.add_all(logs)
-
         s.commit()

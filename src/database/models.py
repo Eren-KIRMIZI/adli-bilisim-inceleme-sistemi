@@ -23,6 +23,7 @@ class Case(Base):
     usb_records = relationship("UsbDeviceRecord", back_populates="case", cascade="all, delete-orphan")
     artifacts = relationship("ForensicArtifact", back_populates="case", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="case", cascade="all, delete-orphan")
+    custody_entries = relationship("ChainOfCustodyEntry", back_populates="case", cascade="all, delete-orphan")
 
 class Evidence(Base):
     __tablename__ = "evidence"
@@ -45,6 +46,27 @@ class Evidence(Base):
     notes = Column(Text, nullable=True)
 
     case = relationship("Case", back_populates="evidences")
+    custody_entries = relationship("ChainOfCustodyEntry", back_populates="evidence", cascade="all, delete-orphan")
+
+class ChainOfCustodyEntry(Base):
+    __tablename__ = "chain_of_custody"
+    id = Column(Integer, primary_key=True)
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    evidence_id = Column(Integer, ForeignKey("evidence.id"), nullable=False)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    action_type = Column(String(64), nullable=False)  # Teslim Alındı, İmaj Alındı, Bütünlük Doğrulandı, Devredildi, İncelendi
+    delivered_by = Column(String(128))
+    received_by = Column(String(128))
+    location = Column(String(128), nullable=True)
+    acquire_method = Column(String(128), nullable=True)
+    write_blocker_info = Column(String(128), nullable=True)
+    sha256_at_event = Column(String(64), nullable=True)
+    sha512_at_event = Column(String(128), nullable=True)
+    verification_status = Column(String(32), default="Doğrulandı")  # Doğrulandı, Uyarı, Uyuşmazlık
+    notes = Column(Text, nullable=True)
+
+    case = relationship("Case", back_populates="custody_entries")
+    evidence = relationship("Evidence", back_populates="custody_entries")
 
 class UsbDeviceRecord(Base):
     __tablename__ = "usb_device_records"
@@ -107,7 +129,7 @@ class AuditLog(Base):
     case = relationship("Case", back_populates="audit_logs")
 
 def init_db(db_path="data/forensics.db"):
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
     engine = create_engine(f"sqlite:///{db_path}", echo=False)
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine)

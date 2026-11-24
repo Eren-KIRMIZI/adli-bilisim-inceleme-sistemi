@@ -63,23 +63,23 @@ class DashboardPage(QWidget):
 
         btn_new_case = QPushButton("➕ Yeni Vaka Aç")
         btn_new_case.setStyleSheet("padding: 6px 12px; font-size: 12px;")
-        btn_new_case.clicked.connect(lambda: self._quick_action("Yeni Vaka Açma Sihirbazı yakında açılacak."))
+        btn_new_case.clicked.connect(lambda: self._goto_page(1))
         action_bar.addWidget(btn_new_case)
 
         btn_add_evd = QPushButton("📥 Delil Kabul Et")
         btn_add_evd.setStyleSheet("padding: 6px 12px; font-size: 12px;")
-        btn_add_evd.clicked.connect(lambda: self._quick_action("Delil Kabul ve Hash Hesaplama modülü hazır."))
+        btn_add_evd.clicked.connect(lambda: self._goto_page(2))
         action_bar.addWidget(btn_add_evd)
 
         btn_usb = QPushButton("🔌 USB Analizine Git")
         btn_usb.setObjectName("primaryBtn")
         btn_usb.setStyleSheet("padding: 6px 12px; font-size: 12px;")
-        btn_usb.clicked.connect(self._goto_usb)
+        btn_usb.clicked.connect(lambda: self._goto_page(6))
         action_bar.addWidget(btn_usb)
 
         btn_report = QPushButton("📑 Adli Rapor Oluştur")
         btn_report.setStyleSheet("padding: 6px 12px; font-size: 12px;")
-        btn_report.clicked.connect(lambda: self._quick_action("Adli Rapor motoru hazır."))
+        btn_report.clicked.connect(lambda: self._goto_page(12))
         action_bar.addWidget(btn_report)
 
         action_bar.addStretch()
@@ -244,10 +244,16 @@ class DashboardPage(QWidget):
                 })
             self.table_audit.set_records(records)
 
-    def _quick_action(self, msg: str):
-        QMessageBox.information(self, "Adli İşlem", msg)
+    def set_active_case(self, case_id: int):
+        """Update active case card from selected case ID."""
+        with self.Session() as s:
+            c = s.query(Case).filter(Case.id == case_id).first()
+            if c:
+                self.lbl_vaka_no.setText(f"Vaka No: {c.case_number}")
+                self.lbl_vaka_title.setText(f"Konu: {c.title}")
+                self.lbl_vaka_investigator.setText(f"Uzman: {c.investigator or '-'} ({c.organization or 'Adli Birim'})")
 
-    def _goto_usb(self):
+    def _goto_page(self, index: int):
         window = self.window()
         if hasattr(window, "sidebar"):
-            window.sidebar.select_page(6)  # USB Analysis index
+            window.sidebar.select_page(index)

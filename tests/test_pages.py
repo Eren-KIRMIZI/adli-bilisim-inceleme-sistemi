@@ -10,6 +10,8 @@ from src.ui.pages.usb_analysis.usb_analysis_page import UsbAnalysisPage
 from src.ui.pages.cases_page import CasesPage
 from src.ui.pages.evidence_page import EvidencePage
 from src.ui.pages.integrity_page import IntegrityPage
+from src.ui.pages.disk_forensics.disk_forensics_page import DiskForensicsPage
+from src.ui.pages.windows_forensics.windows_forensics_page import WindowsForensicsPage
 from src.ui.shell.main_window import MainWindow
 
 
@@ -59,6 +61,41 @@ def test_integrity_page(qapp, tmp_path):
     db_file = str(tmp_path / "ui_int.db")
     page = IntegrityPage(db_path=db_file)
     assert page.custody_table.rowCount() >= 4
+
+
+def test_disk_forensics_page(qapp, tmp_path):
+    from src.ntfs_engine.ntfs_service import create_synthetic_ntfs_image
+    img_path = str(tmp_path / "ui_disk.dd")
+    create_synthetic_ntfs_image(img_path)
+
+    page = DiskForensicsPage()
+    page.load_image(img_path)
+    assert page.table.rowCount() >= 6
+    page._run_carving()
+    assert page.table.rowCount() >= 3
+
+
+def test_windows_forensics_page(qapp, tmp_path):
+    from src.registry_engine.hive_parser import create_synthetic_registry_hive
+    from src.eventlog_engine.evtx_service import create_synthetic_evtx_file
+    from src.registry_engine.windows_artifacts import create_synthetic_windows_artifacts
+
+    hive_path = str(tmp_path / "ui_hive.hiv")
+    evtx_path = str(tmp_path / "ui_sec.evtx")
+    create_synthetic_registry_hive(hive_path)
+    create_synthetic_evtx_file(evtx_path)
+    art_paths = create_synthetic_windows_artifacts(str(tmp_path / "arts"))
+
+    page = WindowsForensicsPage()
+    page.load_hive(hive_path)
+    assert page.reg_tree.topLevelItemCount() == 1
+
+    page.load_evtx(evtx_path)
+    assert page.evtx_table.rowCount() == 5
+
+    for p in art_paths.values():
+        page.load_artifact_file(p)
+    assert page.art_table.rowCount() == 3
 
 
 def test_main_window_integration(qapp):

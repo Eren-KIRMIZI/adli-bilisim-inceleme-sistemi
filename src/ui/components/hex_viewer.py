@@ -2,14 +2,15 @@
 
 import hashlib
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, 
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QPlainTextEdit, QMessageBox, QApplication
 )
-from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont, QTextCursor
+
 
 class ForensicHexViewer(QWidget):
     """Forensic standard Hexadecimal & ASCII inspector."""
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self._current_data = b""
@@ -19,63 +20,49 @@ class ForensicHexViewer(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
 
-        # Top Control Toolbar
         toolbar = QHBoxLayout()
         toolbar.setSpacing(8)
 
         lbl = QLabel("Offset:")
-        lbl.setStyleSheet("color: #667085; font-size: 12px; font-weight: 600;")
+        lbl.setObjectName("mutedLabel")
         toolbar.addWidget(lbl)
 
         self.jump_input = QLineEdit()
-        self.jump_input.setPlaceholderText("0x0000 veya Sayı")
-        self.jump_input.setFixedWidth(110)
+        self.jump_input.setPlaceholderText("0x0000")
+        self.jump_input.setFixedWidth(100)
         self.jump_input.setStyleSheet("font-family: Consolas; font-size: 11px; padding: 3px 6px;")
         toolbar.addWidget(self.jump_input)
 
         jump_btn = QPushButton("Git")
-        jump_btn.setFixedWidth(50)
-        jump_btn.setStyleSheet("padding: 3px 8px; font-size: 11px;")
+        jump_btn.setFixedWidth(48)
         jump_btn.clicked.connect(self._jump_to_offset)
         toolbar.addWidget(jump_btn)
 
         toolbar.addStretch()
 
         self.size_badge = QLabel("0 Bayt")
-        self.size_badge.setStyleSheet("color: #667085; font-size: 11px; background: #EAECF0; padding: 2px 6px; border-radius: 4px;")
+        self.size_badge.setObjectName("monoLabel")
         toolbar.addWidget(self.size_badge)
 
         self.sha_badge = QLabel("SHA-256: -")
-        self.sha_badge.setStyleSheet("color: #315C85; font-family: Consolas; font-size: 11px; background: #E9F1F8; padding: 2px 8px; border-radius: 4px;")
+        self.sha_badge.setObjectName("topbarBadge")
         toolbar.addWidget(self.sha_badge)
 
         copy_btn = QPushButton("Hex Kopyala")
-        copy_btn.setStyleSheet("padding: 3px 8px; font-size: 11px;")
         copy_btn.clicked.connect(self._copy_hex)
         toolbar.addWidget(copy_btn)
 
         layout.addLayout(toolbar)
 
-        # Monospace Hex Text Display
         self.text_edit = QPlainTextEdit()
         self.text_edit.setReadOnly(True)
         self.text_edit.setFont(QFont("Consolas", 10))
-        self.text_edit.setStyleSheet("""
-            QPlainTextEdit {
-                background-color: #FFFFFF;
-                color: #1D2733;
-                border: 1px solid #D0D5DD;
-                border-radius: 6px;
-                line-height: 1.4;
-            }
-        """)
         layout.addWidget(self.text_edit)
 
     def load_bytes(self, data: bytes, base_offset: int = 0):
         self._current_data = data
         self._base_offset = base_offset
 
-        # Calculate hashes
         sha = hashlib.sha256(data).hexdigest() if data else "-"
         self.size_badge.setText(f"{len(data):,} Bayt")
         self.sha_badge.setText(f"SHA256: {sha[:12]}...")
@@ -85,13 +72,13 @@ class ForensicHexViewer(QWidget):
             self.text_edit.setPlainText("İncelenecek bayt verisi yok.")
             return
 
-        lines = []
-        # Header line
-        lines.append("OFFSET    00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F   ASCII DEĞERİ")
-        lines.append("--------  -----------------------  -----------------------   ----------------")
+        lines = [
+            "OFFSET    00 01 02 03 04 05 06 07  08 09 0A 0B 0C 0D 0E 0F   ASCII DEĞERİ",
+            "--------  -----------------------  -----------------------   ----------------",
+        ]
 
         for off in range(0, min(len(data), 65536), 16):
-            chunk = data[off:off+16]
+            chunk = data[off:off + 16]
             hex_p1 = " ".join(f"{b:02X}" for b in chunk[:8])
             hex_p2 = " ".join(f"{b:02X}" for b in chunk[8:])
             hex_full = f"{hex_p1:<23}  {hex_p2:<23}"
@@ -117,7 +104,7 @@ class ForensicHexViewer(QWidget):
             return
         try:
             val = int(text, 16) if text.startswith("0x") else int(text)
-            line_idx = (val // 16) + 2  # plus headers
+            line_idx = (val // 16) + 2
             cursor = self.text_edit.textCursor()
             cursor.movePosition(QTextCursor.Start)
             for _ in range(line_idx):

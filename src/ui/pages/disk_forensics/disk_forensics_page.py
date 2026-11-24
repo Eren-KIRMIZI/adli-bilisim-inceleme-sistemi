@@ -89,7 +89,7 @@ class DiskForensicsPage(QWidget):
         tree_lay.setContentsMargins(10, 10, 10, 10)
         tree_lay.setSpacing(6)
         tree_lbl = QLabel("Disk ve Bölüm Ağacı")
-        tree_lbl.setStyleSheet("font-size: 12px; font-weight: 700; color: #1D2733;")
+        tree_lbl.setObjectName("sectionTitle")
         tree_lay.addWidget(tree_lbl)
 
         self.tree = QTreeWidget()
@@ -106,7 +106,7 @@ class DiskForensicsPage(QWidget):
         tbl_lay.setSpacing(6)
 
         self.table_title = QLabel("Dosya Sistemi & MFT Kayıtları")
-        self.table_title.setStyleSheet("font-size: 12px; font-weight: 700; color: #1D2733;")
+        self.table_title.setObjectName("sectionTitle")
         tbl_lay.addWidget(self.table_title)
 
         self.mft_headers = [
@@ -123,11 +123,12 @@ class DiskForensicsPage(QWidget):
         meta_card.setObjectName("surfaceCard")
         meta_card.setMinimumWidth(280)
         meta_lay = QVBoxLayout(meta_card)
+        meta_card.setContentsMargins(0, 0, 0, 0)
         meta_lay.setContentsMargins(10, 10, 10, 10)
         meta_lay.setSpacing(6)
 
         meta_lbl = QLabel("Seçili Öğe Metadata & Zamanlar")
-        meta_lbl.setStyleSheet("font-size: 12px; font-weight: 700; color: #1D2733;")
+        meta_lbl.setObjectName("sectionTitle")
         meta_lay.addWidget(meta_lbl)
 
         self.meta_text = QTextEdit()

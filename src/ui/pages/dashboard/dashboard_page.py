@@ -33,7 +33,6 @@ class DashboardPage(QWidget):
         top_bar.addStretch()
 
         refresh_btn = QPushButton("🔄 Verileri Yenile")
-        refresh_btn.setStyleSheet("font-size: 12px; padding: 5px 12px;")
         refresh_btn.clicked.connect(self.refresh_data)
         top_bar.addWidget(refresh_btn)
         main_layout.addLayout(top_bar)
@@ -58,27 +57,23 @@ class DashboardPage(QWidget):
         action_bar.setSpacing(10)
 
         act_label = QLabel("Hızlı İşlemler:")
-        act_label.setStyleSheet("font-size: 12px; font-weight: 600; color: #667085;")
+        act_label.setObjectName("mutedLabel")
         action_bar.addWidget(act_label)
 
         btn_new_case = QPushButton("➕ Yeni Vaka Aç")
-        btn_new_case.setStyleSheet("padding: 6px 12px; font-size: 12px;")
         btn_new_case.clicked.connect(lambda: self._goto_page(1))
         action_bar.addWidget(btn_new_case)
 
         btn_add_evd = QPushButton("📥 Delil Kabul Et")
-        btn_add_evd.setStyleSheet("padding: 6px 12px; font-size: 12px;")
         btn_add_evd.clicked.connect(lambda: self._goto_page(2))
         action_bar.addWidget(btn_add_evd)
 
         btn_usb = QPushButton("🔌 USB Analizine Git")
         btn_usb.setObjectName("primaryBtn")
-        btn_usb.setStyleSheet("padding: 6px 12px; font-size: 12px;")
         btn_usb.clicked.connect(lambda: self._goto_page(6))
         action_bar.addWidget(btn_usb)
 
         btn_report = QPushButton("📑 Adli Rapor Oluştur")
-        btn_report.setStyleSheet("padding: 6px 12px; font-size: 12px;")
         btn_report.clicked.connect(lambda: self._goto_page(12))
         action_bar.addWidget(btn_report)
 
@@ -98,7 +93,7 @@ class DashboardPage(QWidget):
 
         l_head = QHBoxLayout()
         l_title = QLabel("Son Adli İşlem Günlüğü (Audit Trail & Activity)")
-        l_title.setStyleSheet("font-size: 13px; font-weight: 700; color: #1D2733;")
+        l_title.setObjectName("sectionTitle")
         l_head.addWidget(l_title)
         l_head.addStretch()
         l_badge = StatusBadge("Denetlenebilir Kayıt", "verified")
@@ -120,45 +115,46 @@ class DashboardPage(QWidget):
         right_lay.setSpacing(12)
 
         r_title = QLabel("Aktif Vaka ve Muhafaza Zinciri")
-        r_title.setStyleSheet("font-size: 13px; font-weight: 700; color: #1D2733;")
+        r_title.setObjectName("sectionTitle")
         right_lay.addWidget(r_title)
 
         self.case_info_box = QFrame()
-        self.case_info_box.setStyleSheet("background: #F9FAFB; border: 1px solid #EAECF0; border-radius: 6px; padding: 10px;")
+        self.case_info_box.setObjectName("subCard")
         cib_lay = QVBoxLayout(self.case_info_box)
+        cib_lay.setContentsMargins(12, 10, 12, 10)
         cib_lay.setSpacing(6)
 
         self.lbl_vaka_no = QLabel("Vaka No: VAK-2026-084")
-        self.lbl_vaka_no.setStyleSheet("font-weight: 600; font-size: 13px; color: #315C85;")
+        self.lbl_vaka_no.setObjectName("sectionTitle")
         cib_lay.addWidget(self.lbl_vaka_no)
 
         self.lbl_vaka_title = QLabel("Konu: Yetkisiz Veri Transferi İncelemesi")
-        self.lbl_vaka_title.setStyleSheet("font-size: 12px; color: #1D2733;")
         self.lbl_vaka_title.setWordWrap(True)
         cib_lay.addWidget(self.lbl_vaka_title)
 
         self.lbl_vaka_investigator = QLabel("Uzman: E. Kırmızı (Siber İnceleme)")
-        self.lbl_vaka_investigator.setStyleSheet("font-size: 11px; color: #667085;")
+        self.lbl_vaka_investigator.setObjectName("mutedLabel")
         cib_lay.addWidget(self.lbl_vaka_investigator)
 
         right_lay.addWidget(self.case_info_box)
 
         # Environmental & Standard Badges
         env_title = QLabel("Adli Standart Uyumluluğu")
-        env_title.setStyleSheet("font-size: 12px; font-weight: 600; color: #1D2733; margin-top: 8px;")
+        env_title.setObjectName("sectionTitle")
         right_lay.addWidget(env_title)
 
         standards = [
             ("ISO/IEC 27037", "Dijital Delil Muhafaza Standardı", "verified"),
             ("NIST SP 800-86", "Windows Sistem Artefakt Analizi", "verified"),
-            ("Salt Okunur Kilit", "Yazma Engelleyici Koruması", "verified"),
-            ("Bütünlük Takibi", "Çift Katmanlı SHA-256 / SHA-512", "verified")
+            ("SWGDE 18-F-001", "Edinim & Raporlama Doğruluğu", "verified"),
+            ("UNODC E4J M6", "Muhafaza Zinciri & Uçuculuk İlkesi", "verified"),
+            ("SQLite WAL + Sync", "Elektrik Kesintisi & Çökme Koruması", "verified"),
         ]
 
         for std_name, std_desc, var in standards:
             s_row = QHBoxLayout()
             s_lbl = QLabel(f"• {std_name}: {std_desc}")
-            s_lbl.setStyleSheet("font-size: 11px; color: #475467;")
+            s_lbl.setObjectName("mutedLabel")
             s_row.addWidget(s_lbl, 1)
             b = StatusBadge("Aktif", var)
             s_row.addWidget(b)
@@ -177,40 +173,29 @@ class DashboardPage(QWidget):
     def _create_kpi_card(self, title: str, main_val: str, sub_val: str, icon: str) -> QFrame:
         card = QFrame()
         card.setObjectName("surfaceCard")
-        card.setFixedHeight(82)
-        card.setStyleSheet("""
-            QFrame#surfaceCard {
-                background-color: #FFFFFF;
-                border: 1px solid #D0D5DD;
-                border-radius: 8px;
-            }
-        """)
+        card.setFixedHeight(84)
 
         layout = QHBoxLayout(card)
         layout.setContentsMargins(14, 10, 14, 10)
         layout.setSpacing(10)
 
-        # Icon box
         icon_lbl = QLabel(icon)
-        icon_lbl.setStyleSheet("font-size: 22px; background: transparent;")
+        icon_lbl.setStyleSheet("font-size: 22px;")
         layout.addWidget(icon_lbl)
 
-        # Content box
         text_lay = QVBoxLayout()
         text_lay.setSpacing(2)
 
         t_lbl = QLabel(title)
-        t_lbl.setStyleSheet("font-size: 11px; font-weight: 600; color: #667085;")
+        t_lbl.setObjectName("mutedLabel")
         text_lay.addWidget(t_lbl)
 
         v_lbl = QLabel(main_val)
         v_lbl.setObjectName("cardVal")
-        v_lbl.setStyleSheet("font-size: 18px; font-weight: 700; color: #1D2733;")
         text_lay.addWidget(v_lbl)
 
         s_lbl = QLabel(sub_val)
         s_lbl.setObjectName("cardSub")
-        s_lbl.setStyleSheet("font-size: 11px; color: #98A2B3;")
         text_lay.addWidget(s_lbl)
 
         layout.addLayout(text_lay)

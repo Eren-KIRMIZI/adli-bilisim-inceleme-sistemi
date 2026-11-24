@@ -70,7 +70,7 @@ class WindowsForensicsPage(QWidget):
         toolbar.addWidget(sample_hive_btn)
 
         self.hive_info_lbl = QLabel("Kovan: Yüklenmedi")
-        self.hive_info_lbl.setStyleSheet("font-family: Consolas; font-size: 11px; color: #667085;")
+        self.hive_info_lbl.setObjectName("monoLabel")
         toolbar.addWidget(self.hive_info_lbl)
         toolbar.addStretch()
         lay.addLayout(toolbar)

@@ -88,7 +88,7 @@ class EvidencePage(QWidget):
         t_lay.setSpacing(8)
 
         tbl_title = QLabel("Kayıtlı Dijital Delil Envanteri")
-        tbl_title.setStyleSheet("font-size: 13px; font-weight: 700; color: #1D2733;")
+        tbl_title.setObjectName("sectionTitle")
         t_lay.addWidget(tbl_title)
 
         headers = [
@@ -110,7 +110,7 @@ class EvidencePage(QWidget):
 
         ins_head = QHBoxLayout()
         self.ins_title = QLabel("Delil Seçilmedi")
-        self.ins_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #1D2733;")
+        self.ins_title.setObjectName("sectionTitle")
         ins_head.addWidget(self.ins_title)
         ins_head.addStretch()
         self.ins_badge = StatusBadge("-", "neutral")

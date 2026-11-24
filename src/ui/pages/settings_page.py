@@ -49,7 +49,7 @@ class SettingsPage(QWidget):
         c_lay.setSpacing(8)
 
         title = QLabel("Arayüz ve Adli Çalışma Politikası")
-        title.setStyleSheet("font-size: 13px; font-weight: 700; color: #1D2733;")
+        title.setObjectName("sectionTitle")
         c_lay.addWidget(title)
 
         theme_row = QHBoxLayout()
@@ -66,10 +66,11 @@ class SettingsPage(QWidget):
 
         policy_lbl = QLabel(
             "• Orijinal delil üzerinde değişiklik yapılmaz; tüm dosya/imaj/SQLite işlemleri salt-okunur modda yürütülür.\n"
+            "• SQLite WAL + synchronous=FULL ve atomik oturum kurtarma ile elektrik kesintisi/çökme koruması aktiftir.\n"
             "• Docker, WSL veya zorunlu bulut API bağımlılığı yoktur; doğrudan Windows üzerinde çalışır.\n"
             "• Ana analiz motorları (NTFS/MFT, Registry Hive, EVTX, LNK, Prefetch, USBSTOR, File Carving) özgün olarak geliştirilmiştir."
         )
-        policy_lbl.setStyleSheet("font-size: 12px; color: #475467;")
+        policy_lbl.setObjectName("mutedLabel")
         c_lay.addWidget(policy_lbl)
         main_layout.addWidget(cfg_card)
 
@@ -81,7 +82,7 @@ class SettingsPage(QWidget):
         l_lay.setSpacing(8)
 
         lic_title = QLabel("Doğrulanmış Bağımlılıklar ve Açık Kaynak Lisans Kaydı (LICENSES.md)")
-        lic_title.setStyleSheet("font-size: 13px; font-weight: 700; color: #1D2733;")
+        lic_title.setObjectName("sectionTitle")
         l_lay.addWidget(lic_title)
 
         self.lic_table = ForensicDataTable(["Durum", "Paket", "Sürüm", "Lisans", "Kullanım"], self)

@@ -2,18 +2,19 @@
 
 from PySide6.QtWidgets import QLabel
 from PySide6.QtCore import Qt
-from src.ui.styles.tokens import LIGHT_THEME
 
 VARIANTS = {
-    "verified": {"bg": "#EDF7F2", "color": "#26845B", "border": "#A3D9C1", "icon": "✓"},
-    "warning":  {"bg": "#FEF7E6", "color": "#B9822D", "border": "#F3D38D", "icon": "⚠"},
-    "critical": {"bg": "#FEE4E2", "color": "#C34C4C", "border": "#FECDCA", "icon": "✕"},
-    "info":     {"bg": "#EFF8FF", "color": "#2E90FA", "border": "#B2DDFF", "icon": "ℹ"},
-    "neutral":  {"bg": "#F2F4F7", "color": "#475467", "border": "#D0D5DD", "icon": "•"},
+    "verified": {"bg": "#EDF7F2", "color": "#1E6B48", "border": "#9CD3B8", "icon": "✓"},
+    "warning":  {"bg": "#FEF7E6", "color": "#9A6719", "border": "#F0CA7A", "icon": "⚠"},
+    "critical": {"bg": "#FEE4E2", "color": "#B43C3C", "border": "#F9B8B4", "icon": "✕"},
+    "info":     {"bg": "#EFF6FF", "color": "#1D4ED8", "border": "#BFDBFE", "icon": "ℹ"},
+    "neutral":  {"bg": "#F2F4F7", "color": "#344054", "border": "#D0D5DD", "icon": "•"},
 }
+
 
 class StatusBadge(QLabel):
     """Clean forensic status pill badge."""
+
     def __init__(self, text: str, variant: str = "neutral", parent=None):
         super().__init__(parent)
         self.set_status(text, variant)
@@ -33,4 +34,4 @@ class StatusBadge(QLabel):
                 font-weight: 600;
             }}
         """)
-        self.setFixedHeight(22)
+        self.setFixedHeight(24)

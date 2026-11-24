@@ -2,19 +2,19 @@
 Adheres strictly to NIST and forensic suite desktop interface guidelines.
 """
 
-from typing import Dict, Any
+from typing import Dict
 
 # Primary Light Palette (Forensic Standard Light)
 LIGHT_THEME: Dict[str, str] = {
     "name": "light",
     "bg": "#F5F5F7",
     "surface": "#FFFFFF",
-    "surface_subtle": "#F9FAFB",
-    "surface_hover": "#F0F4F8",
+    "surface_subtle": "#F8FAFC",
+    "surface_hover": "#EEF2F6",
     "surface_selected": "#E3ECF5",
     "text": "#1D2733",
-    "text_secondary": "#667085",
-    "text_muted": "#98A2B3",
+    "text_secondary": "#475467",
+    "text_muted": "#667085",
     "border": "#D0D5DD",
     "border_light": "#EAECF0",
     "border_focus": "#315C85",
@@ -25,24 +25,31 @@ LIGHT_THEME: Dict[str, str] = {
     "accent_subtle": "#F2F6FA",
     "verified": "#26845B",
     "verified_light": "#EDF7F2",
+    "verified_border": "#A3D9C1",
     "warning": "#B9822D",
     "warning_light": "#FEF7E6",
+    "warning_border": "#F3D38D",
+    "warning_text": "#7A5418",
     "critical": "#C34C4C",
     "critical_light": "#FEE4E2",
-    "info": "#2E90FA",
-    "info_light": "#EFF8FF",
+    "critical_border": "#FECDCA",
+    "info": "#2563EB",
+    "info_light": "#EFF6FF",
+    "info_border": "#BFDBFE",
     "sidebar_bg": "#1D2733",
-    "sidebar_text": "#F5F5F7",
-    "sidebar_text_muted": "#8A99AC",
+    "sidebar_text": "#E5E7EB",
+    "sidebar_text_muted": "#9CA3AF",
     "sidebar_active": "#315C85",
     "sidebar_hover": "#283747",
+    "sidebar_border": "#2A3646",
     "topbar_bg": "#FFFFFF",
     "statusbar_bg": "#1D2733",
+    "statusbar_text": "#CBD5E1",
     "monospace_font": "'JetBrains Mono', 'Consolas', 'Courier New', monospace",
     "ui_font": "'Segoe UI', 'Inter', -apple-system, sans-serif",
 }
 
-# Dark Palette (Forensic Standard Dark - preserves visual hierarchy)
+# Dark Palette (Forensic Standard Dark - preserves visual hierarchy with crisp contrast)
 DARK_THEME: Dict[str, str] = {
     "name": "dark",
     "bg": "#111418",
@@ -50,42 +57,51 @@ DARK_THEME: Dict[str, str] = {
     "surface_subtle": "#202630",
     "surface_hover": "#28313E",
     "surface_selected": "#2D3A4B",
-    "text": "#E8ECF2",
-    "text_secondary": "#9AA5B5",
-    "text_muted": "#64748B",
+    "text": "#F1F5F9",
+    "text_secondary": "#CBD5E1",
+    "text_muted": "#94A3B8",
     "border": "#2E3846",
     "border_light": "#252D38",
     "border_focus": "#4A7FA8",
-    "accent": "#4A7FA8",
-    "accent_hover": "#5C94BF",
-    "accent_pressed": "#3A678A",
+    "accent": "#3B719F",
+    "accent_hover": "#4D87B8",
+    "accent_pressed": "#2B567A",
     "accent_light": "#1C2B38",
     "accent_subtle": "#16202A",
     "verified": "#34A872",
     "verified_light": "#132E22",
+    "verified_border": "#1E4D38",
     "warning": "#D4973B",
-    "warning_light": "#332612",
+    "warning_light": "#2F2310",
+    "warning_border": "#5C431B",
+    "warning_text": "#FCD34D",
     "critical": "#D95C5C",
     "critical_light": "#361616",
-    "info": "#4B9EF5",
-    "info_light": "#122538",
+    "critical_border": "#632525",
+    "info": "#60A5FA",
+    "info_light": "#16253A",
+    "info_border": "#254066",
     "sidebar_bg": "#0D1014",
     "sidebar_text": "#E8ECF2",
-    "sidebar_text_muted": "#758296",
+    "sidebar_text_muted": "#8A99AC",
     "sidebar_active": "#263D52",
     "sidebar_hover": "#171D24",
-    "topbar_bg": "#1A1F26",
+    "sidebar_border": "#1F2733",
+    "topbar_bg": "#161B22",
     "statusbar_bg": "#0D1014",
+    "statusbar_text": "#94A3B8",
     "monospace_font": "'JetBrains Mono', 'Consolas', 'Courier New', monospace",
     "ui_font": "'Segoe UI', 'Inter', -apple-system, sans-serif",
 }
 
 CURRENT_THEME = "light"
 
+
 def get_theme(name: str = None) -> Dict[str, str]:
     if name is None:
         name = CURRENT_THEME
     return DARK_THEME if name == "dark" else LIGHT_THEME
+
 
 def build_qss(theme_name: str = "light") -> str:
     t = get_theme(theme_name)
@@ -100,22 +116,85 @@ def build_qss(theme_name: str = "light") -> str:
     outline: none;
 }}
 
-QWidget {{
+QMainWindow, QDialog {{
     background-color: {t['bg']};
     color: {t['text']};
-    selection-background-color: {t['accent_light']};
-    selection-color: {t['text']};
 }}
 
-/* Window & Base Frames */
-QMainWindow {{
+QWidget {{
+    color: {t['text']};
+}}
+
+QStackedWidget#pageStack {{
     background-color: {t['bg']};
+    border: none;
 }}
 
+QScrollArea {{
+    background-color: transparent;
+    border: none;
+}}
+
+QLabel {{
+    background-color: transparent;
+    color: {t['text']};
+}}
+
+QLabel#sectionTitle {{
+    font-size: 13px;
+    font-weight: 700;
+    color: {t['text']};
+}}
+
+QLabel#mutedLabel {{
+    font-size: 11px;
+    color: {t['text_muted']};
+}}
+
+QLabel#monoLabel {{
+    font-family: {t['monospace_font']};
+    font-size: 11px;
+    color: {t['text_secondary']};
+}}
+
+QLabel#cardVal {{
+    font-size: 18px;
+    font-weight: 700;
+    color: {t['text']};
+}}
+
+QLabel#cardSub {{
+    font-size: 11px;
+    color: {t['text_muted']};
+}}
+
+QLabel#breadcrumbParent {{
+    font-size: 13px;
+    color: {t['text_muted']};
+}}
+
+QLabel#breadcrumbSep {{
+    font-size: 14px;
+    color: {t['text_muted']};
+}}
+
+QLabel#breadcrumbActive {{
+    font-size: 13px;
+    font-weight: 600;
+    color: {t['text']};
+}}
+
+/* Cards & Panels */
 QFrame#surfaceCard {{
     background-color: {t['surface']};
     border: 1px solid {t['border']};
     border-radius: 8px;
+}}
+
+QFrame#subCard {{
+    background-color: {t['surface_subtle']};
+    border: 1px solid {t['border_light']};
+    border-radius: 6px;
 }}
 
 QFrame#panelFrame {{
@@ -124,23 +203,172 @@ QFrame#panelFrame {{
     border-radius: 6px;
 }}
 
+QFrame#warnBanner {{
+    background-color: {t['warning_light']};
+    border: 1px solid {t['warning_border']};
+    border-radius: 6px;
+}}
+
+QLabel#warnBannerText {{
+    color: {t['warning_text']};
+    font-size: 12px;
+    background-color: transparent;
+}}
+
+QFrame#infoBanner {{
+    background-color: {t['info_light']};
+    border: 1px solid {t['info_border']};
+    border-radius: 6px;
+}}
+
+QLabel#infoBannerText {{
+    color: {t['info']};
+    font-size: 12px;
+    background-color: transparent;
+}}
+
 /* Topbar */
 QFrame#topbarFrame {{
     background-color: {t['topbar_bg']};
     border-bottom: 1px solid {t['border']};
 }}
 
+QLabel#topbarTitle {{
+    font-size: 14px;
+    font-weight: 700;
+    color: {t['text']};
+    letter-spacing: 0.5px;
+}}
+
+QLabel#topbarBadge {{
+    background-color: {t['accent_light']};
+    color: {t['accent']};
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 4px;
+}}
+
+QPushButton#topbarCaseBtn {{
+    background-color: {t['surface_subtle']};
+    color: {t['text']};
+    border: 1px solid {t['border']};
+    border-radius: 6px;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}}
+
+QPushButton#topbarCaseBtn:hover {{
+    background-color: {t['surface_hover']};
+    border-color: {t['accent']};
+}}
+
+QLabel#topbarEvidencePill {{
+    background-color: {t['surface_subtle']};
+    color: {t['text_secondary']};
+    border: 1px solid {t['border_light']};
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 500;
+}}
+
+QLabel#topbarWriteBlockPill {{
+    background-color: {t['verified_light']};
+    color: {t['verified']};
+    border: 1px solid {t['verified_border']};
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-weight: 700;
+}}
+
+QLabel#topbarProfilePill {{
+    background-color: {t['sidebar_bg']};
+    color: #F5F5F7;
+    border: 1px solid {t['sidebar_border']};
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+}}
+
 /* Sidebar */
 QFrame#sidebarFrame {{
     background-color: {t['sidebar_bg']};
-    border-right: 1px solid {t['border']};
+    border-right: 1px solid {t['sidebar_border']};
+}}
+
+QWidget#sidebarContainer {{
+    background-color: transparent;
+}}
+
+QLabel#sidebarHeader {{
+    color: {t['sidebar_text_muted']};
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 4px 8px;
+}}
+
+QFrame#sidebarFooter {{
+    background-color: transparent;
+    border: none;
+    border-top: 1px solid {t['sidebar_border']};
+    padding-top: 8px;
+}}
+
+QLabel#sidebarFooterSafe {{
+    color: #34A872;
+    font-size: 11px;
+    font-weight: 600;
+}}
+
+QLabel#sidebarFooterVer {{
+    color: {t['sidebar_text_muted']};
+    font-size: 10px;
+}}
+
+QPushButton#navBtn {{
+    background-color: transparent;
+    color: {t['sidebar_text']};
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 13px;
+    font-weight: 500;
+}}
+
+QPushButton#navBtn:hover {{
+    background-color: {t['sidebar_hover']};
+    color: #FFFFFF;
+}}
+
+QPushButton#navBtn:checked, QPushButton#navBtn[active="true"] {{
+    background-color: {t['sidebar_active']};
+    color: #FFFFFF;
+    font-weight: 600;
 }}
 
 /* Statusbar */
 QFrame#statusbarFrame {{
     background-color: {t['statusbar_bg']};
-    border-top: 1px solid {t['border']};
-    color: {t['sidebar_text_muted']};
+    border-top: 1px solid {t['sidebar_border']};
+}}
+
+QLabel#statusBarText {{
+    font-size: 11px;
+    color: {t['statusbar_text']};
+    background-color: transparent;
+}}
+
+QLabel#statusBarDbOk {{
+    font-size: 11px;
+    color: #34A872;
+    font-weight: 600;
+    background-color: transparent;
 }}
 
 /* Buttons */
@@ -168,7 +396,6 @@ QPushButton:disabled {{
     border-color: {t['border_light']};
 }}
 
-/* Primary Accent Button */
 QPushButton#primaryBtn {{
     background-color: {t['accent']};
     color: #FFFFFF;
@@ -185,44 +412,22 @@ QPushButton#primaryBtn:pressed {{
     background-color: {t['accent_pressed']};
 }}
 
-/* Verified / Success Button */
 QPushButton#verifiedBtn {{
     background-color: {t['verified']};
     color: #FFFFFF;
-    border: none;
+    border: 1px solid {t['verified']};
+    font-weight: 600;
 }}
 
-/* Danger Button */
 QPushButton#dangerBtn {{
     background-color: {t['critical']};
     color: #FFFFFF;
-    border: none;
-}}
-
-/* Sidebar Navigation Buttons */
-QPushButton#navBtn {{
-    background-color: transparent;
-    color: {t['sidebar_text']};
-    border: none;
-    border-radius: 6px;
-    padding: 8px 12px;
-    text-align: left;
-    font-size: 13px;
-}}
-
-QPushButton#navBtn:hover {{
-    background-color: {t['sidebar_hover']};
-    color: #FFFFFF;
-}}
-
-QPushButton#navBtn:checked, QPushButton#navBtn[active="true"] {{
-    background-color: {t['sidebar_active']};
-    color: #FFFFFF;
+    border: 1px solid {t['critical']};
     font-weight: 600;
 }}
 
 /* Tables and Tree Views */
-QTableWidget, QTableView, QTreeView {{
+QTableWidget, QTableView, QTreeView, QTreeWidget {{
     background-color: {t['surface']};
     color: {t['text']};
     border: 1px solid {t['border']};
@@ -249,7 +454,7 @@ QHeaderView::section:hover {{
 }}
 
 /* Inputs */
-QLineEdit, QTextEdit, QPlainTextEdit, QComboBox, QSpinBox, QDateEdit {{
+QLineEdit, QTextEdit, QPlainTextEdit, QTextBrowser, QComboBox, QSpinBox, QDateEdit {{
     background-color: {t['surface']};
     color: {t['text']};
     border: 1px solid {t['border']};
@@ -261,21 +466,28 @@ QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {{
     border: 1.5px solid {t['border_focus']};
 }}
 
-QLineEdit:read-only, QTextEdit:read-only {{
+QLineEdit:read-only, QTextEdit:read-only, QPlainTextEdit:read-only {{
     background-color: {t['surface_subtle']};
     color: {t['text_secondary']};
 }}
 
-QComboBox::drop-down {{
-    border: none;
-    padding-right: 8px;
+QComboBox QAbstractItemView {{
+    background-color: {t['surface']};
+    color: {t['text']};
+    border: 1px solid {t['border']};
+    selection-background-color: {t['surface_selected']};
+    selection-color: {t['text']};
+}}
+
+QCheckBox {{
+    color: {t['text']};
+    spacing: 8px;
 }}
 
 /* ScrollBars */
 QScrollBar:vertical {{
     background: transparent;
     width: 8px;
-    margin: 0px;
 }}
 
 QScrollBar::handle:vertical {{

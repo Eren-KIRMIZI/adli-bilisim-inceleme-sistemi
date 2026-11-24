@@ -84,17 +84,15 @@ class IntegrityPage(QWidget):
 
         # Forensic Note Banner
         note_frame = QFrame()
-        note_frame.setStyleSheet(
-            "background-color: #FEF7E6; border: 1px solid #F3D38D; border-radius: 6px; padding: 10px;"
-        )
+        note_frame.setObjectName("warnBanner")
         nf_lay = QHBoxLayout(note_frame)
-        nf_lay.setContentsMargins(10, 6, 10, 6)
+        nf_lay.setContentsMargins(12, 8, 12, 8)
         note_lbl = QLabel(
-            "⚠️ Adli İlke: Hash doğrulaması tek başına delilin edinim sürecinin güvenilirliğini kanıtlamaz. "
-            "Edinim yöntemi, kullanılan donanım ve yazma engelleyici (write-blocker) bilgileri Muhafaza Zinciri sekmesinde kaydedilmelidir."
+            "⚠️ Adli İlke (NIST SP 800-86 & UNODC M6): Hash doğrulaması tek başına edinim güvenilirliğini kanıtlamaz. "
+            "Edinim yöntemi, yazma engelleyici donanım ve erişim amacı Muhafaza Zinciri sekmesinde kaydedilmelidir."
         )
         note_lbl.setWordWrap(True)
-        note_lbl.setStyleSheet("color: #7A5418; font-size: 12px; background: transparent; border: none;")
+        note_lbl.setObjectName("warnBannerText")
         nf_lay.addWidget(note_lbl)
         lay.addWidget(note_frame)
 
@@ -106,7 +104,7 @@ class IntegrityPage(QWidget):
         c_lay.setSpacing(10)
 
         c_title = QLabel("Dosya / Disk İmajı SHA-256 & SHA-512 Hesaplama (Salt Okunur)")
-        c_title.setStyleSheet("font-size: 13px; font-weight: 700; color: #1D2733;")
+        c_title.setObjectName("sectionTitle")
         c_lay.addWidget(c_title)
 
         file_row = QHBoxLayout()
@@ -135,7 +133,7 @@ class IntegrityPage(QWidget):
         c_lay.addWidget(self.progress_bar)
 
         self.file_meta_lbl = QLabel("Boyut: - | Durum: Dosya seçilmedi")
-        self.file_meta_lbl.setStyleSheet("font-family: Consolas; font-size: 11px; color: #667085;")
+        self.file_meta_lbl.setObjectName("monoLabel")
         c_lay.addWidget(self.file_meta_lbl)
 
         # SHA-256 Output
@@ -172,7 +170,7 @@ class IntegrityPage(QWidget):
         v_lay.setSpacing(10)
 
         v_title = QLabel("Beklenen Hash Karşılaştırma & Delil Kaydına İşleme")
-        v_title.setStyleSheet("font-size: 13px; font-weight: 700; color: #1D2733;")
+        v_title.setObjectName("sectionTitle")
         v_lay.addWidget(v_title)
 
         comp_row = QHBoxLayout()
@@ -451,9 +449,10 @@ class IntegrityPage(QWidget):
 
         delivered = QLineEdit()
         received = QLineEdit()
+        purpose = QLineEdit("Adli İnceleme / Çalışma Kopyası Analizi")
         location = QLineEdit("Adli Bilişim Laboratuvarı")
         method = QLineEdit("Fiziksel Teslim / Çalışma Kopyası")
-        wb_info = QLineEdit("Tableau T8u Hardware Write-Blocker")
+        wb_info = QLineEdit("Tableau T8u Hardware Write-Blocker (Doğrulandı)")
         cb_status = QComboBox()
         cb_status.addItems(["Doğrulandı", "Uyarı", "Uyuşmazlık"])
         notes = QTextEdit()
@@ -463,6 +462,7 @@ class IntegrityPage(QWidget):
         form.addRow("İşlem Türü *:", cb_action)
         form.addRow("Teslim Eden *:", delivered)
         form.addRow("Teslim Alan *:", received)
+        form.addRow("Erişim Amacı (UNODC) *:", purpose)
         form.addRow("Konum:", location)
         form.addRow("Edinim / Erişim Yöntemi:", method)
         form.addRow("Yazma Engelleyici / Donanım:", wb_info)
@@ -485,6 +485,7 @@ class IntegrityPage(QWidget):
                 QMessageBox.warning(dlg, "Eksik Bilgi", "Teslim eden ve teslim alan bilgileri zorunludur.")
                 return
             cid, eid = cb_evd.currentData()
+            combined_notes = f"[Erişim Amacı: {purpose.text().strip()}]\n{notes.toPlainText().strip()}".strip()
             self.svc.add_custody_entry(
                 case_id=cid,
                 evidence_id=eid,
@@ -495,7 +496,7 @@ class IntegrityPage(QWidget):
                 acquire_method=method.text(),
                 write_blocker_info=wb_info.text(),
                 verification_status=cb_status.currentText(),
-                notes=notes.toPlainText(),
+                notes=combined_notes,
             )
             dlg.accept()
             self.refresh_records()

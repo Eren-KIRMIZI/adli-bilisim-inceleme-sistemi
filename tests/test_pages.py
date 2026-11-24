@@ -145,8 +145,16 @@ def test_timeline_relations_reports_settings_pages(qapp, tmp_path):
     assert st.lic_table.rowCount() >= 9
 
 
-def test_main_window_integration(qapp):
-    win = MainWindow()
+def test_main_window_integration(qapp, tmp_path):
+    qapp.setStyle("Fusion")
+    win = MainWindow(db_path=str(tmp_path / "main.db"), data_dir=str(tmp_path))
     assert win.stack.count() == 14
     assert "VAK-" in win.topbar.case_btn.text()
     assert isinstance(win.settings_page, SettingsPage)
+    # Verify escaped ampersand in sidebar labels
+    assert "&&" in win.sidebar.buttons[3].text()
+    # Verify Dark Mode switching works cleanly
+    win.set_theme("dark")
+    assert win._current_theme == "dark"
+    win.set_theme("light")
+    win.close()

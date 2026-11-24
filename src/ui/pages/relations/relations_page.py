@@ -102,14 +102,13 @@ class RelationsPage(QWidget):
             "Gösterim:  ━━ Doğrulanabilir Kanıtlı Bağlantı (Registry/Seri/SID)   |   "
             "- - - Kanıtlanmamış Zamansal Yakınlık (Hipotez)"
         )
-        legend.setStyleSheet("font-size: 11px; color: #667085; padding: 4px;")
+        legend.setObjectName("mutedLabel")
         g_lay.addWidget(legend)
 
         self.scene = QGraphicsScene(self)
         self.view = QGraphicsView(self.scene)
         self.view.setRenderHint(QPainter.Antialiasing)
         self.view.setDragMode(QGraphicsView.ScrollHandDrag)
-        self.view.setStyleSheet("background: #FFFFFF; border: 1px solid #EAECF0; border-radius: 6px;")
         g_lay.addWidget(self.view)
         splitter.addWidget(graph_card)
 
@@ -161,6 +160,7 @@ class RelationsPage(QWidget):
 
         # Draw nodes on top
         label_font = QFont("Segoe UI", 8, QFont.Bold)
+        label_color = self.palette().color(self.foregroundRole())
         for n in nodes:
             cx, cy = coord_map[n["id"]]
             node_item = InteractiveNodeItem(n, cx, cy, self._on_node_clicked)
@@ -168,7 +168,7 @@ class RelationsPage(QWidget):
 
             txt = QGraphicsTextItem(f"{n['label']}")
             txt.setFont(label_font)
-            txt.setDefaultTextColor(QColor("#1D2733"))
+            txt.setDefaultTextColor(label_color)
             txt.setPos(cx - txt.boundingRect().width() / 2, cy + 28)
             self.scene.addItem(txt)
 

@@ -127,15 +127,16 @@ HTML_REPORT_TEMPLATE = Template("""<!DOCTYPE html>
   </table>
   {% endif %}
 
-  <h2>5. Uzman Değerlendirme Notları</h2>
+  <h2>5. Uzman Yorumu ve Değerlendirme (Objektif Bulgulardan Ayrıdır — SWGDE)</h2>
   <div class="box">{{ expert_notes }}</div>
 
-  <h2>6. Yöntem ve Analiz Sınırlamaları</h2>
+  <h2>6. Yöntem, Araç Doğrulama ve Analiz Sınırlamaları</h2>
   <div class="box">{{ limitations }}</div>
 
   <div class="footer">
     Bu rapor <strong>Adli Bilişim İnceleme Sistemi ({{ app_version }})</strong> tarafından salt-okunur çalışma kopyaları üzerinden,
-    ISO/IEC 27037 ve NIST SP 800-86 ilkelerine uygun şekilde oluşturulmuştur. Doğrulanmamış zamansal ilişkiler kesin bulgu olarak sunulmamıştır.
+    ISO/IEC 27037, NIST SP 800-86, SWGDE ve UNODC E4J Modül 6 ilkelerine uygun şekilde oluşturulmuştur.
+    Objektif teknik bulgular (Bölüm 1-4) ile uzman yorumu (Bölüm 5) birbirinden ayrılmıştır; doğrulanmamış zamansal ilişkiler kesin bulgu olarak sunulmamıştır.
   </div>
 </div>
 </body>

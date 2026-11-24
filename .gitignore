@@ -3,7 +3,12 @@ __pycache__/
 .venv/
 venv/
 *.db
+*.db-wal
+*.db-shm
 *.sqlite
+data/backups/
+data/.session_active.lock
+data/session_recovery.json
 dist/
 build/
 *.egg-info/

@@ -1,14 +1,15 @@
-"""Forensic Data Table with filtering, badges, sorting, and context actions."""
+"""Forensic Data Table with smart column sizing, filtering, badges, sorting, and context actions."""
 
 import csv
 from typing import List, Dict, Any, Optional
 from PySide6.QtWidgets import (
-    QTableWidget, QTableWidgetItem, QHeaderView, QMenu, 
-    QApplication, QFileDialog, QMessageBox, QWidget, QHBoxLayout
+    QTableWidget, QTableWidgetItem, QHeaderView, QMenu,
+    QApplication, QFileDialog, QMessageBox, QWidget, QHBoxLayout, QAbstractItemView
 )
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QAction, QColor
+from PySide6.QtGui import QFont, QAction
 from src.ui.components.status_indicator import StatusBadge
+
 
 class ForensicDataTable(QTableWidget):
     """High performance, forensic-standard data table widget."""
@@ -27,14 +28,18 @@ class ForensicDataTable(QTableWidget):
         self.setSelectionBehavior(QTableWidget.SelectRows)
         self.setSelectionMode(QTableWidget.SingleSelection)
         self.setShowGrid(True)
+        self.setWordWrap(False)
+        self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
+        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.verticalHeader().setVisible(False)
-        self.verticalHeader().setDefaultSectionSize(38)
+        self.verticalHeader().setDefaultSectionSize(40)
         self.setSortingEnabled(True)
 
         header = self.horizontalHeader()
         header.setStretchLastSection(True)
         header.setHighlightSections(False)
         header.setDefaultAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        header.setMinimumSectionSize(72)
 
         # Context Menu
         self.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -48,6 +53,7 @@ class ForensicDataTable(QTableWidget):
         self._raw_records = records
         self._visible_records = list(records)
         self._render_rows(self._visible_records)
+        self._autosize_columns()
         self.setSortingEnabled(True)
 
     def _render_rows(self, records: List[Dict[str, Any]]):
@@ -57,38 +63,61 @@ class ForensicDataTable(QTableWidget):
         for row_idx, rec in enumerate(records):
             for col_idx, col_name in enumerate(self.headers):
                 val = rec.get(col_name, "")
-                
-                # Check if it's a status badge column
+
                 if col_name.lower() in ("durum", "status", "bütünlük", "doğrulama"):
                     variant = "neutral"
                     sval = str(val).lower()
                     if any(k in sval for k in ["doğrulandı", "normal", "verified", "ok"]):
                         variant = "verified"
-                    elif any(k in sval for k in ["şüpheli", "warning", "uyarı", "anomali"]):
+                    elif any(k in sval for k in ["şüpheli", "warning", "uyarı", "anomali", "silinmiş", "yinelenen"]):
                         variant = "warning"
-                    elif any(k in sval for k in ["kritik", "bozuk", "critical", "zararlı"]):
+                    elif any(k in sval for k in ["kritik", "bozuk", "critical", "zararlı", "uyuşmazlık", "sahte"]):
                         variant = "critical"
                     elif any(k in sval for k in ["inceleniyor", "bilgi", "info"]):
                         variant = "info"
 
                     badge = StatusBadge(str(val), variant)
                     container = QWidget()
+                    container.setStyleSheet("background: transparent;")
                     lay = QHBoxLayout(container)
                     lay.setContentsMargins(6, 4, 6, 4)
                     lay.addWidget(badge)
                     lay.addStretch()
                     self.setCellWidget(row_idx, col_idx, container)
-                    
-                    # Also set a dummy item for sorting
+
                     item = QTableWidgetItem(str(val))
+                    item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                    # Keep underlying text hidden behind badge widget cleanly
+                    item.setData(Qt.DisplayRole, "")
                     self.setItem(row_idx, col_idx, item)
                 else:
-                    item = QTableWidgetItem(str(val) if val is not None else "-")
-                    # Use monospace for technical data
+                    text = str(val) if val is not None else "-"
+                    item = QTableWidgetItem(text)
+                    item.setToolTip(text)
                     if any(k in col_name.lower() for k in ["vid", "pid", "seri", "hash", "zaman", "guid", "tarih", "offset"]):
                         item.setFont(mono_font)
                     item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                     self.setItem(row_idx, col_idx, item)
+
+    def _autosize_columns(self):
+        """Ensure badges, timestamps, and headers are never clipped."""
+        self.resizeColumnsToContents()
+        header = self.horizontalHeader()
+        for col_idx, col_name in enumerate(self.headers):
+            current_w = header.sectionSize(col_idx)
+            min_header_w = max(84, len(col_name) * 8 + 26)
+            if col_name.lower() in ("durum", "status", "bütünlük", "doğrulama"):
+                # Calculate max badge width in this column
+                badge_max = min_header_w
+                for row_idx in range(min(self.rowCount(), 50)):
+                    w = self.cellWidget(row_idx, col_idx)
+                    if w:
+                        badge_max = max(badge_max, w.sizeHint().width() + 8)
+                header.resizeSection(col_idx, min(220, badge_max))
+            elif any(k in col_name.lower() for k in ["açıklama", "başlığı", "cihaz adı", "hedef", "kullanım", "tam yol", "url", "ayrıntılar"]):
+                header.resizeSection(col_idx, max(min_header_w, min(320, current_w + 18)))
+            else:
+                header.resizeSection(col_idx, max(min_header_w, min(240, current_w + 18)))
 
     def filter_records(self, query: str):
         """Filter rows across all columns case-insensitively."""
@@ -102,6 +131,7 @@ class ForensicDataTable(QTableWidget):
             ]
         self.setSortingEnabled(False)
         self._render_rows(self._visible_records)
+        self._autosize_columns()
         self.setSortingEnabled(True)
 
     def get_selected_record(self) -> Optional[Dict[str, Any]]:

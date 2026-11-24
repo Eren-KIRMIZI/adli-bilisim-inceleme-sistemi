@@ -147,7 +147,7 @@ class FileAnalysisPage(QWidget):
         lay.addLayout(row)
 
         self.dup_summary = QLabel("Durum: Bekleniyor")
-        self.dup_summary.setStyleSheet("font-size: 12px; color: #667085;")
+        self.dup_summary.setObjectName("mutedLabel")
         lay.addWidget(self.dup_summary)
 
         self.dup_table = ForensicDataTable(

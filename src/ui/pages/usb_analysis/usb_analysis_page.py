@@ -93,12 +93,12 @@ class UsbAnalysisPage(QWidget):
 
         t_header = QHBoxLayout()
         tbl_title = QLabel("Tespit Edilen USB Donanım & Kayıt Defteri İzleri")
-        tbl_title.setStyleSheet("font-size: 13px; font-weight: 700; color: #1D2733;")
+        tbl_title.setObjectName("sectionTitle")
         t_header.addWidget(tbl_title)
         t_header.addStretch()
 
         help_lbl = QLabel("Detaylı metadata ve hex incelemesi için satıra tıklayın")
-        help_lbl.setStyleSheet("font-size: 11px; color: #98A2B3;")
+        help_lbl.setObjectName("mutedLabel")
         t_header.addWidget(help_lbl)
         tc_layout.addLayout(t_header)
 

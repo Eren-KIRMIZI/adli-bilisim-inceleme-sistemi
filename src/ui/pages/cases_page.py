@@ -87,7 +87,7 @@ class CasesPage(QWidget):
 
         t_head = QHBoxLayout()
         t_title = QLabel("Kayıtlı Adli Soruşturma Vakaları")
-        t_title.setStyleSheet("font-size: 13px; font-weight: 700; color: #1D2733;")
+        t_title.setObjectName("sectionTitle")
         t_head.addWidget(t_title)
         t_head.addStretch()
         t_lay.addLayout(t_head)
@@ -108,7 +108,7 @@ class CasesPage(QWidget):
 
         ins_head = QHBoxLayout()
         self.ins_title = QLabel("Vaka Seçilmedi")
-        self.ins_title.setStyleSheet("font-size: 14px; font-weight: 700; color: #1D2733;")
+        self.ins_title.setObjectName("sectionTitle")
         ins_head.addWidget(self.ins_title)
         ins_head.addStretch()
         self.ins_badge = StatusBadge("-", "neutral")
@@ -124,7 +124,7 @@ class CasesPage(QWidget):
         ti_lay.setSpacing(8)
 
         self.lbl_dates = QLabel("Açılış: - | Kapanış: -")
-        self.lbl_dates.setStyleSheet("font-family: Consolas; font-size: 11px; color: #667085;")
+        self.lbl_dates.setObjectName("monoLabel")
         ti_lay.addWidget(self.lbl_dates)
 
         form = QFormLayout()

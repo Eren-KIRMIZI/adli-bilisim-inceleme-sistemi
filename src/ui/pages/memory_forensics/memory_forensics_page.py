@@ -60,15 +60,18 @@ class MemoryAnalysisPage(QWidget):
         main_layout.addLayout(toolbar)
 
         # Warning / Honesty Banner
+        info_frame = QFrame()
+        info_frame.setObjectName("infoBanner")
+        if_lay = QHBoxLayout(info_frame)
+        if_lay.setContentsMargins(12, 8, 12, 8)
         self.warning_lbl = QLabel(
             "ℹ️ Adli Bütünlük İlkesi: Desteklenmeyen veya sembolsüz RAM formatlarında uydurma süreç ağacı üretilmez; "
             "yalnızca ham dökümde doğrulanabilen başlıklar, PE modülleri ve ağ/IOC kalıntıları raporlanır."
         )
         self.warning_lbl.setWordWrap(True)
-        self.warning_lbl.setStyleSheet(
-            "background-color: #EFF8FF; color: #1D4E89; border: 1px solid #B2DDFF; border-radius: 6px; padding: 8px; font-size: 12px;"
-        )
-        main_layout.addWidget(self.warning_lbl)
+        self.warning_lbl.setObjectName("infoBannerText")
+        if_lay.addWidget(self.warning_lbl)
+        main_layout.addWidget(info_frame)
 
         # Main Splitter
         splitter = QSplitter(Qt.Horizontal)

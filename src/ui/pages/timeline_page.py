@@ -38,7 +38,9 @@ class TimelineDensityChart(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         rect = self.rect()
-        painter.fillRect(rect, QColor("#FFFFFF"))
+        bg_col = self.palette().color(self.window().backgroundRole())
+        txt_col = self.palette().color(self.foregroundRole())
+        painter.fillRect(rect, bg_col)
 
         if not self._buckets:
             painter.setPen(QColor("#98A2B3"))
@@ -59,10 +61,10 @@ class TimelineDensityChart(QWidget):
             h = max(4, int((cnt / max_c) * avail_h))
             y = pad_top + (avail_h - h)
 
-            painter.fillRect(int(x), int(y), int(bar_w), int(h), QColor("#315C85"))
-            painter.setPen(QColor("#1D2733"))
+            painter.fillRect(int(x), int(y), int(bar_w), int(h), QColor("#3B719F"))
+            painter.setPen(txt_col)
             painter.drawText(int(x), int(y) - 3, str(cnt))
-            painter.setPen(QColor("#667085"))
+            painter.setPen(QColor("#94A3B8"))
             painter.drawText(int(x), rect.height() - 6, lbl[-5:])
 
 
@@ -128,7 +130,7 @@ class TimelinePage(QWidget):
         ch_lay.setContentsMargins(10, 6, 10, 6)
         ch_lay.setSpacing(2)
         ch_lbl = QLabel("Saatlik Olay Yoğunluğu (UTC)")
-        ch_lbl.setStyleSheet("font-size: 11px; font-weight: 600; color: #667085;")
+        ch_lbl.setObjectName("mutedLabel")
         ch_lay.addWidget(ch_lbl)
         self.chart = TimelineDensityChart(self)
         ch_lay.addWidget(self.chart)

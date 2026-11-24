@@ -1,10 +1,7 @@
 """Tests for Dashboard, USB Analysis, Cases, Evidence, Integrity pages, and MainWindow."""
 
 import os
-os.environ["QT_QPA_PLATFORM"] = "offscreen"
-
 import pytest
-from PySide6.QtWidgets import QApplication
 from src.ui.pages.dashboard.dashboard_page import DashboardPage
 from src.ui.pages.usb_analysis.usb_analysis_page import UsbAnalysisPage
 from src.ui.pages.cases_page import CasesPage
@@ -20,14 +17,6 @@ from src.ui.pages.relations.relations_page import RelationsPage
 from src.ui.pages.reports_page import ReportsPage
 from src.ui.pages.settings_page import SettingsPage
 from src.ui.shell.main_window import MainWindow
-
-
-@pytest.fixture(scope="session")
-def qapp():
-    app = QApplication.instance()
-    if not app:
-        app = QApplication([])
-    return app
 
 
 def test_dashboard_page(qapp):

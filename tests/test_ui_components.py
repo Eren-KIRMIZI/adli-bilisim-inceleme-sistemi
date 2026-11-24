@@ -1,10 +1,7 @@
 """GUI component tests in headless mode."""
 
 import os
-os.environ["QT_QPA_PLATFORM"] = "offscreen"
-
 import pytest
-from PySide6.QtWidgets import QApplication
 from src.ui.components.status_indicator import StatusBadge
 from src.ui.components.search_field import ForensicSearchField
 from src.ui.components.breadcrumb import Breadcrumb
@@ -12,12 +9,6 @@ from src.ui.components.data_table import ForensicDataTable
 from src.ui.components.hex_viewer import ForensicHexViewer
 from src.ui.components.metadata_panel import MetadataPanel
 
-@pytest.fixture(scope="session")
-def qapp():
-    app = QApplication.instance()
-    if not app:
-        app = QApplication([])
-    return app
 
 def test_status_badge(qapp):
     badge = StatusBadge("Doğrulandı", "verified")

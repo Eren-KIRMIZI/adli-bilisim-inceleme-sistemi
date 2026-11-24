@@ -225,6 +225,8 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
+        if hasattr(self, "_autosave_timer"):
+            self._autosave_timer.stop()
         self._save_checkpoint()
         self.recovery.create_verified_db_backup(self.db_path)
         self.recovery.end_session_cleanly()

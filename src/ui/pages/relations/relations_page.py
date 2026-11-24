@@ -16,13 +16,12 @@ from src.ui.components.status_indicator import StatusBadge
 
 
 class InteractiveNodeItem(QGraphicsEllipseItem):
-    """Clickable forensic graph node."""
+    """Clickable forensic graph node (cycle-free via QGraphicsScene.selectionChanged)."""
 
-    def __init__(self, node_meta: Dict[str, Any], cx: float, cy: float, on_click):
+    def __init__(self, node_meta: Dict[str, Any], cx: float, cy: float):
         r = 26
         super().__init__(cx - r, cy - r, r * 2, r * 2)
         self.node_meta = node_meta
-        self.on_click = on_click
         self.setFlag(QGraphicsEllipseItem.ItemIsSelectable, True)
         self.setCursor(Qt.PointingHandCursor)
 
@@ -40,11 +39,6 @@ class InteractiveNodeItem(QGraphicsEllipseItem):
 
         self.setBrush(QBrush(QColor(fill)))
         self.setPen(QPen(QColor(border), 2.2))
-
-    def mousePressEvent(self, event):
-        super().mousePressEvent(event)
-        if self.on_click:
-            self.on_click(self.node_meta)
 
 
 class RelationsPage(QWidget):
@@ -108,6 +102,7 @@ class RelationsPage(QWidget):
         g_lay.addWidget(legend)
 
         self.scene = QGraphicsScene(self)
+        self.scene.selectionChanged.connect(self._on_scene_selection)
         self.view = QGraphicsView(self.scene)
         self.view.setRenderHint(QPainter.Antialiasing)
         self.view.setDragMode(QGraphicsView.ScrollHandDrag)
@@ -171,7 +166,7 @@ class RelationsPage(QWidget):
         label_color = QColor(t["text"])
         for n in nodes:
             cx, cy = coord_map[n["id"]]
-            node_item = InteractiveNodeItem(n, cx, cy, self._on_node_clicked)
+            node_item = InteractiveNodeItem(n, cx, cy)
             self.scene.addItem(node_item)
 
             txt = QGraphicsTextItem(f"{n['label']}")
@@ -182,6 +177,12 @@ class RelationsPage(QWidget):
 
         if nodes:
             self._on_node_clicked(nodes[0])
+
+    def _on_scene_selection(self):
+        for item in self.scene.selectedItems():
+            if isinstance(item, InteractiveNodeItem):
+                self._on_node_clicked(item.node_meta)
+                break
 
     def _on_node_clicked(self, node_meta: Dict[str, Any]):
         nid = node_meta["id"]

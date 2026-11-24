@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from sqlalchemy import create_engine, event, Column, Integer, String, DateTime, Boolean, Text, ForeignKey
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
+from sqlalchemy.pool import NullPool
 
 Base = declarative_base()
 
@@ -133,6 +134,7 @@ def init_db(db_path="data/forensics.db"):
     engine = create_engine(
         f"sqlite:///{db_path}",
         echo=False,
+        poolclass=NullPool,
         connect_args={"timeout": 10},
     )
 

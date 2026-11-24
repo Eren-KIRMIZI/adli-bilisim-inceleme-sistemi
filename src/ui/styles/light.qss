@@ -1,5 +1,187 @@
-QWidget { background:#F5F5F7; color:#1D2733; font-family:Segoe UI; font-size:13px; }
-QFrame { background:#FFFFFF; border:1px solid #D0D5DD; border-radius:8px; }
-QPushButton { background:#315C85; color:white; border:none; padding:6px 12px; border-radius:6px; }
-QTableWidget { gridline-color:#D0D5DD; }
-QLineEdit, QTextEdit { background:#FFFFFF; border:1px solid #D0D5DD; padding:4px; border-radius:6px; }
+/* Forensic Light Theme */
+@import "tokens.py";
+
+* {
+    font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
+    font-size: 13px;
+    outline: none;
+}
+
+QWidget {
+    background-color: #F5F5F7;
+    color: #1D2733;
+}
+
+QMainWindow {
+    background-color: #F5F5F7;
+}
+
+QFrame#surfaceCard {
+    background-color: #FFFFFF;
+    border: 1px solid #D0D5DD;
+    border-radius: 8px;
+}
+
+QFrame#panelFrame {
+    background-color: #FFFFFF;
+    border: 1px solid #D0D5DD;
+    border-radius: 6px;
+}
+
+QFrame#topbarFrame {
+    background-color: #FFFFFF;
+    border-bottom: 1px solid #D0D5DD;
+}
+
+QFrame#sidebarFrame {
+    background-color: #1D2733;
+    border-right: 1px solid #101824;
+}
+
+QFrame#statusbarFrame {
+    background-color: #1D2733;
+    border-top: 1px solid #101824;
+    color: #8A99AC;
+}
+
+QPushButton {
+    background-color: #FFFFFF;
+    color: #1D2733;
+    border: 1px solid #D0D5DD;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-weight: 500;
+}
+
+QPushButton:hover {
+    background-color: #F0F4F8;
+    border-color: #315C85;
+}
+
+QPushButton:pressed {
+    background-color: #E3ECF5;
+}
+
+QPushButton#primaryBtn {
+    background-color: #315C85;
+    color: #FFFFFF;
+    border: 1px solid #315C85;
+    font-weight: 600;
+}
+
+QPushButton#primaryBtn:hover {
+    background-color: #254869;
+    border-color: #254869;
+}
+
+QPushButton#verifiedBtn {
+    background-color: #26845B;
+    color: #FFFFFF;
+    border: none;
+    font-weight: 600;
+}
+
+QPushButton#dangerBtn {
+    background-color: #C34C4C;
+    color: #FFFFFF;
+    border: none;
+    font-weight: 600;
+}
+
+QPushButton#navBtn {
+    background-color: transparent;
+    color: #F5F5F7;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 13px;
+}
+
+QPushButton#navBtn:hover {
+    background-color: #283747;
+    color: #FFFFFF;
+}
+
+QPushButton#navBtn[active="true"] {
+    background-color: #315C85;
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
+QTableWidget, QTableView, QTreeView {
+    background-color: #FFFFFF;
+    color: #1D2733;
+    border: 1px solid #D0D5DD;
+    border-radius: 6px;
+    gridline-color: #EAECF0;
+    alternate-background-color: #F9FAFB;
+    selection-background-color: #E3ECF5;
+    selection-color: #1D2733;
+}
+
+QHeaderView::section {
+    background-color: #F9FAFB;
+    color: #667085;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 6px 10px;
+    border: none;
+    border-bottom: 1px solid #D0D5DD;
+    border-right: 1px solid #EAECF0;
+}
+
+QLineEdit, QTextEdit, QPlainTextEdit, QComboBox {
+    background-color: #FFFFFF;
+    color: #1D2733;
+    border: 1px solid #D0D5DD;
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {
+    border: 1.5px solid #315C85;
+}
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+}
+
+QScrollBar::handle:vertical {
+    background: #D0D5DD;
+    min-height: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #98A2B3;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QTabWidget::pane {
+    border: 1px solid #D0D5DD;
+    border-radius: 6px;
+    background-color: #FFFFFF;
+}
+
+QTabBar::tab {
+    background-color: #F9FAFB;
+    color: #667085;
+    border: 1px solid #D0D5DD;
+    border-bottom: none;
+    padding: 7px 16px;
+    margin-right: 4px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+QTabBar::tab:selected {
+    background-color: #FFFFFF;
+    color: #315C85;
+    font-weight: 600;
+    border-bottom: 2px solid #315C85;
+}

@@ -1,5 +1,185 @@
-QWidget { background:#121417; color:#E8EAF0; font-family:Segoe UI; font-size:13px; }
-QFrame { background:#1E2126; border:1px solid #2A2F36; border-radius:8px; }
-QPushButton { background:#5B8DB8; color:white; border:none; padding:6px 12px; border-radius:6px; }
-QTableWidget { gridline-color:#2A2F36; }
-QLineEdit, QTextEdit { background:#1E2126; border:1px solid #2A2F36; padding:4px; border-radius:6px; }
+/* Forensic Dark Theme */
+* {
+    font-family: 'Segoe UI', 'Inter', -apple-system, sans-serif;
+    font-size: 13px;
+    outline: none;
+}
+
+QWidget {
+    background-color: #111418;
+    color: #E8ECF2;
+}
+
+QMainWindow {
+    background-color: #111418;
+}
+
+QFrame#surfaceCard {
+    background-color: #1A1F26;
+    border: 1px solid #2E3846;
+    border-radius: 8px;
+}
+
+QFrame#panelFrame {
+    background-color: #1A1F26;
+    border: 1px solid #2E3846;
+    border-radius: 6px;
+}
+
+QFrame#topbarFrame {
+    background-color: #1A1F26;
+    border-bottom: 1px solid #2E3846;
+}
+
+QFrame#sidebarFrame {
+    background-color: #0D1014;
+    border-right: 1px solid #1E2530;
+}
+
+QFrame#statusbarFrame {
+    background-color: #0D1014;
+    border-top: 1px solid #1E2530;
+    color: #758296;
+}
+
+QPushButton {
+    background-color: #1A1F26;
+    color: #E8ECF2;
+    border: 1px solid #2E3846;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-weight: 500;
+}
+
+QPushButton:hover {
+    background-color: #28313E;
+    border-color: #4A7FA8;
+}
+
+QPushButton:pressed {
+    background-color: #2D3A4B;
+}
+
+QPushButton#primaryBtn {
+    background-color: #4A7FA8;
+    color: #FFFFFF;
+    border: 1px solid #4A7FA8;
+    font-weight: 600;
+}
+
+QPushButton#primaryBtn:hover {
+    background-color: #5C94BF;
+    border-color: #5C94BF;
+}
+
+QPushButton#verifiedBtn {
+    background-color: #34A872;
+    color: #FFFFFF;
+    border: none;
+    font-weight: 600;
+}
+
+QPushButton#dangerBtn {
+    background-color: #D95C5C;
+    color: #FFFFFF;
+    border: none;
+    font-weight: 600;
+}
+
+QPushButton#navBtn {
+    background-color: transparent;
+    color: #E8ECF2;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 13px;
+}
+
+QPushButton#navBtn:hover {
+    background-color: #171D24;
+    color: #FFFFFF;
+}
+
+QPushButton#navBtn[active="true"] {
+    background-color: #263D52;
+    color: #FFFFFF;
+    font-weight: 600;
+}
+
+QTableWidget, QTableView, QTreeView {
+    background-color: #1A1F26;
+    color: #E8ECF2;
+    border: 1px solid #2E3846;
+    border-radius: 6px;
+    gridline-color: #252D38;
+    alternate-background-color: #202630;
+    selection-background-color: #2D3A4B;
+    selection-color: #FFFFFF;
+}
+
+QHeaderView::section {
+    background-color: #202630;
+    color: #9AA5B5;
+    font-weight: 600;
+    font-size: 12px;
+    padding: 6px 10px;
+    border: none;
+    border-bottom: 1px solid #2E3846;
+    border-right: 1px solid #252D38;
+}
+
+QLineEdit, QTextEdit, QPlainTextEdit, QComboBox {
+    background-color: #1A1F26;
+    color: #E8ECF2;
+    border: 1px solid #2E3846;
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QComboBox:focus {
+    border: 1.5px solid #4A7FA8;
+}
+
+QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+}
+
+QScrollBar::handle:vertical {
+    background: #2E3846;
+    min-height: 24px;
+    border-radius: 4px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: #64748B;
+}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+
+QTabWidget::pane {
+    border: 1px solid #2E3846;
+    border-radius: 6px;
+    background-color: #1A1F26;
+}
+
+QTabBar::tab {
+    background-color: #202630;
+    color: #9AA5B5;
+    border: 1px solid #2E3846;
+    border-bottom: none;
+    padding: 7px 16px;
+    margin-right: 4px;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+QTabBar::tab:selected {
+    background-color: #1A1F26;
+    color: #4A7FA8;
+    font-weight: 600;
+    border-bottom: 2px solid #4A7FA8;
+}

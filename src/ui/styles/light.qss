@@ -1,0 +1,5 @@
+QWidget { background:#F5F5F7; color:#1D2733; font-family:Segoe UI; font-size:13px; }
+QFrame { background:#FFFFFF; border:1px solid #D0D5DD; border-radius:8px; }
+QPushButton { background:#315C85; color:white; border:none; padding:6px 12px; border-radius:6px; }
+QTableWidget { gridline-color:#D0D5DD; }
+QLineEdit, QTextEdit { background:#FFFFFF; border:1px solid #D0D5DD; padding:4px; border-radius:6px; }

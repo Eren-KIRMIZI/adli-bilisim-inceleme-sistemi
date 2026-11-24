@@ -12,13 +12,13 @@ Modüler motor mimarisi. Her analiz motoru bağımsız çalışır, standart ana
 Python 3.12+, PySide6, SQLite, SQLAlchemy, Pydantic, ReportLab, Jinja2, Matplotlib.
 
 ## Dokümanlar
-- `ARCHITECTURE.md`
-- `MODULES.md`
-- `DATABASE_SCHEMA.md`
-- `DEVELOPMENT_ROADMAP.md`
-- `LICENSES.md`
-- `SECURITY.md`
-- `TESTING.md`
+- `docs/ARCHITECTURE.md`
+- `docs/MODULES.md`
+- `docs/DATABASE_SCHEMA.md`
+- `docs/DEVELOPMENT_ROADMAP.md`
+- `docs/LICENSES.md`
+- `docs/SECURITY.md`
+- `docs/TESTING.md`
 
 ## Lisans
 Proje lisansı belirlenecektir (önerilen: MIT/Apache-2.0). Bağımlılık lisansları `LICENSES.md` içinde takip edilir.

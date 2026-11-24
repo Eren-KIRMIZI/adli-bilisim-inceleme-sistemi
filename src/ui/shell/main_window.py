@@ -42,8 +42,10 @@ class MainWindow(QMainWindow):
     def _add_pages(self):
         from PySide6.QtWidgets import QLabel
         from src.ui.pages.cases_page import CasesPage
+        from src.ui.pages.evidence_page import EvidencePage
         dash = QLabel("Dashboard")
         dash.setAlignment(Qt.AlignCenter)
         dash.setStyleSheet("font-size:24px;")
         self.stack.addWidget(dash)
         self.stack.addWidget(CasesPage())
+        self.stack.addWidget(EvidencePage())

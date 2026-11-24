@@ -9,7 +9,9 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from src.ntfs_engine.ntfs_service import DiskForensicsEngine, create_synthetic_ntfs_image
+from src.ntfs_engine.ntfs_service import (
+    DiskForensicsEngine, create_synthetic_ntfs_image, create_synthetic_usn_journal
+)
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.search_field import ForensicSearchField
 from src.ui.components.data_table import ForensicDataTable
@@ -71,6 +73,10 @@ class DiskForensicsPage(QWidget):
         carve_btn = QPushButton("🔎 File Carving Tara")
         carve_btn.clicked.connect(self._run_carving)
         toolbar.addWidget(carve_btn)
+
+        usn_btn = QPushButton("📜 $UsnJrnl:$J Aç")
+        usn_btn.clicked.connect(self._open_usn_dialog)
+        toolbar.addWidget(usn_btn)
 
         main_layout.addLayout(toolbar)
 
@@ -218,7 +224,7 @@ class DiskForensicsPage(QWidget):
             status_str = "Şüpheli / Silinmiş" if rec["is_deleted"] else "Normal (Aktif)"
             self._all_file_rows.append({
                 "Durum": status_str,
-                "Dosya Adı": rec["filename"],
+                "Dosya Adı": rec.get("full_path") or rec["filename"],
                 "MFT #": rec["record_index"],
                 "Boyut": f"{rec['size']:,} B",
                 "İmza / Tür": rec["signature_type"],
@@ -321,7 +327,46 @@ class DiskForensicsPage(QWidget):
         if self._carved_rows:
             self._on_row_selected(self._carved_rows[0])
 
+    def _open_usn_dialog(self):
+        fp, _ = QFileDialog.getOpenFileName(self, "NTFS $UsnJrnl:$J Dosyası Seç", "", "USN Journal (*; *.bin);;Tüm Dosyalar (*.*)")
+        if not fp:
+            sample = os.path.join("data", "sample_usn_j.bin")
+            create_synthetic_usn_journal(sample)
+            fp = sample
+        self.load_usn_journal(fp)
+
+    def load_usn_journal(self, usn_path: str):
+        recs = self.engine.parse_usn_journal(usn_path)
+        self._carved_rows = []
+        for r in recs:
+            self._carved_rows.append({
+                "Durum": "Uyarı" if "FILE_DELETE" in r["reason_str"] else "Normal",
+                "Dosya Adı": f"{r['filename']} ({r['reason_str']})",
+                "MFT #": f"USN {r['usn']}",
+                "Boyut": f"Ref #{r['mft_ref']}",
+                "İmza / Tür": r["version"],
+                "Oluşturulma (UTC)": r["timestamp_utc"].strftime("%Y-%m-%d %H:%M:%S") if r["timestamp_utc"] else "-",
+                "Değiştirilme (UTC)": "-",
+                "_usn": r,
+            })
+        self._view_mode = "carving"
+        self.table_title.setText(f"NTFS $UsnJrnl:$J Değişiklik Günlüğü ({len(self._carved_rows)} Kayıt)")
+        self.records_badge.set_status(f"{len(self._carved_rows)} USN", "verified")
+        self._apply_filters()
+
     def _on_row_selected(self, row: Dict[str, Any]):
+        if "_usn" in row:
+            u = row["_usn"]
+            self.meta_text.setPlainText(
+                f"NTFS $UsnJrnl:$J KAYDI ({u['version']})\n"
+                f"USN:        {u['usn']}\n"
+                f"Dosya:      {u['filename']}\n"
+                f"MFT Ref:    {u['mft_ref']} (Ebeveyn: {u['parent_mft_ref']})\n"
+                f"Zaman(UTC): {u['timestamp_utc']}\n"
+                f"Nedenler:   {u['reason_str']}\n"
+                f"Offset:     0x{u['offset']:08X}\n"
+            )
+            return
         if "_carved" in row:
             c = row["_carved"]
             txt = (

@@ -312,7 +312,7 @@ class WindowsForensicsPage(QWidget):
         self.art_filter = QComboBox()
         self.art_filter.addItems([
             "Tüm Artefaktlar", "Başlangıç (Autorun)", "Servis", "Kullanıcı Hesabı",
-            "Prefetch (.pf)", "LNK Kısayolu", "Geri Dönüşüm Kutusu ($I)"
+            "UserAssist", "ShimCache", "Prefetch (.pf)", "LNK Kısayolu", "Geri Dönüşüm Kutusu ($I)"
         ])
         self.art_filter.setFixedWidth(190)
         self.art_filter.currentIndexChanged.connect(self._apply_artifact_filters)

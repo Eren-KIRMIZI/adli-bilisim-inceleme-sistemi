@@ -77,7 +77,7 @@ class MainWindow(QMainWindow):
         from src.ui.pages.timeline_page import TimelinePage
         from src.ui.pages.relations.relations_page import RelationsPage
         from src.ui.pages.reports_page import ReportsPage
-        from src.ui.pages.placeholder import make_page
+        from src.ui.pages.settings_page import SettingsPage
 
         self.dashboard_page = DashboardPage()
         self.cases_page = CasesPage()
@@ -92,11 +92,12 @@ class MainWindow(QMainWindow):
         self.timeline_page = TimelinePage()
         self.relations_page = RelationsPage()
         self.reports_page = ReportsPage()
-        self.settings_page = make_page("Ayarlar ve Lisanslar")
+        self.settings_page = SettingsPage()
 
         # Global case & evidence synchronization signals
         self.cases_page.activeCaseSelected.connect(self._on_active_case_changed)
         self.evidence_page.activeEvidenceSelected.connect(self._on_active_evidence_changed)
+        self.settings_page.themeSelected.connect(self.set_theme)
 
         pages = [
             self.dashboard_page,

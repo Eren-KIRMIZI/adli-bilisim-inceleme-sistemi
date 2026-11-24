@@ -15,6 +15,10 @@ from src.ui.pages.windows_forensics.windows_forensics_page import WindowsForensi
 from src.ui.pages.file_analysis_page import FileAnalysisPage
 from src.ui.pages.browser_forensics.browser_forensics_page import BrowserAnalysisPage
 from src.ui.pages.memory_forensics.memory_forensics_page import MemoryAnalysisPage
+from src.ui.pages.timeline_page import TimelinePage
+from src.ui.pages.relations.relations_page import RelationsPage
+from src.ui.pages.reports_page import ReportsPage
+from src.ui.pages.settings_page import SettingsPage
 from src.ui.shell.main_window import MainWindow
 
 
@@ -125,7 +129,24 @@ def test_file_browser_memory_pages(qapp, tmp_path):
     assert mpage.tbl_iocs.rowCount() >= 2
 
 
+def test_timeline_relations_reports_settings_pages(qapp, tmp_path):
+    db_file = str(tmp_path / "ui_final.db")
+
+    tl = TimelinePage(db_path=db_file)
+    assert tl.table.rowCount() >= 10
+
+    rel = RelationsPage(db_path=db_file)
+    assert len(rel._graph_data["nodes"]) >= 6
+
+    rep = ReportsPage(db_path=db_file)
+    assert "VAK-2026-084" in rep.preview.toHtml()
+
+    st = SettingsPage()
+    assert st.lic_table.rowCount() >= 9
+
+
 def test_main_window_integration(qapp):
     win = MainWindow()
     assert win.stack.count() == 14
     assert "VAK-" in win.topbar.case_btn.text()
+    assert isinstance(win.settings_page, SettingsPage)

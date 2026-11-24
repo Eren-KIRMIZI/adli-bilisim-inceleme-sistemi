@@ -1,15 +1,17 @@
 # Licenses
 
-Bağımlılıklar ve lisansları burada takip edilir. Yalnızca MIT/BSD/Apache-2.0 uyumlu paketler kullanılır.
+Bağımlılıklar ve lisansları proje ilkeleri gereği doğrulanmıştır. Yalnızca ticari kullanıma açık ve uygun açık kaynak lisanslı (MIT, BSD-2-Clause, BSD-3-Clause, Apache-2.0, PSF, LGPL-3.0) paketler kullanılır.
 
-| Paket | Lisans | Durum |
-|---|---|---|
-| Python | PSF | onaylı |
-| PySide6 | LGPL-3.0 (Qt) | ticari kısıt yok, dağıtım koşulları incelenecek |
-| SQLAlchemy | MIT | onaylı |
-| Pydantic | MIT | onaylı |
-| ReportLab | BSD | onaylı |
-| Jinja2 | BSD-3 | onaylı |
-| Matplotlib | PSF/BSD | onaylı |
+| Paket | Lisans | Durum | Kullanım Amacı |
+|---|---|---|---|
+| Python | PSF License | onaylı | Çekirdek çalışma zamanı ve standart kütüphane binary ayrıştırıcıları |
+| PySide6 | LGPL-3.0 (Qt) | onaylı | Masaüstü Qt Widgets arayüz katmanı |
+| SQLAlchemy | MIT | onaylı | SQLite veritabanı ORM katmanı |
+| Pydantic | MIT | onaylı | Standart analiz çıktısı veri şeması (`ForensicArtifactModel`) |
+| ReportLab | BSD | onaylı | Çevrimdışı PDF adli inceleme raporu oluşturma |
+| Jinja2 | BSD-3-Clause | onaylı | Denetlenebilir HTML adli rapor şablonlama |
+| Matplotlib | PSF / BSD | onaylı | Görselleştirme desteği |
+| NetworkX | BSD-3-Clause | onaylı | Evidence Relations grafik düzeni ve düğüm/kenar topolojisi |
+| pytest | MIT | onaylı | Otomatik birim ve arayüz test doğrulaması |
 
-The Sleuth Kit, Volatility, Plaso yalnızca isteğe bağlı entegrasyon olarak değerlendirilecek; ana motor olarak kullanılmayacak.
+> **Not:** Autopsy, FTK, EnCase gibi ticari yazılımlara bağımlılık yoktur. The Sleuth Kit, Volatility ve Plaso ana analiz motoru olarak kullanılmamaktadır; tüm disk, Registry Hive, EVTX, USB, tarayıcı, dosya ve bellek analiz motorları Python standart kütüphaneleriyle özgün olarak geliştirilmiştir.

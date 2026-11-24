@@ -9,7 +9,7 @@ from PySide6.QtCore import QTimer
 from src.ui.shell.topbar import Topbar
 from src.ui.shell.sidebar import Sidebar
 from src.ui.shell.statusbar import Statusbar
-from src.ui.styles.tokens import build_qss
+from src.ui.styles.tokens import build_qss, build_palette
 from src.case_engine.case_service import CaseService
 from src.evidence_engine.evidence_service import EvidenceService
 from src.core.recovery import RecoveryManager
@@ -199,13 +199,16 @@ class MainWindow(QMainWindow):
         qss_code = build_qss(theme_name)
         app = QApplication.instance()
         if app:
+            app.setPalette(build_palette(theme_name))
             app.setStyleSheet(qss_code)
         self.topbar.set_theme_state(theme_name)
         self.settings_page.theme_combo.blockSignals(True)
         self.settings_page.theme_combo.setCurrentIndex(0 if theme_name == "light" else 1)
         self.settings_page.theme_combo.blockSignals(False)
-        if hasattr(self.relations_page, "refresh_records"):
-            self.relations_page.refresh_records()
+        if hasattr(self.timeline_page, "set_theme"):
+            self.timeline_page.set_theme(theme_name)
+        if hasattr(self.relations_page, "set_theme"):
+            self.relations_page.set_theme(theme_name)
         self._save_checkpoint()
 
     def _save_checkpoint(self):

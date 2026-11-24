@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QColor, QFont
 
 from src.timeline_engine.timeline_service import TimelineService
+from src.ui.styles.tokens import get_theme
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.search_field import ForensicSearchField
 from src.ui.components.data_table import ForensicDataTable
@@ -23,6 +24,11 @@ class TimelineDensityChart(QWidget):
         super().__init__(parent)
         self.setFixedHeight(96)
         self._buckets: List[tuple] = []  # (label, count)
+        self._theme_name = "light"
+
+    def set_theme(self, theme_name: str):
+        self._theme_name = theme_name
+        self.update()
 
     def set_events(self, events: List[Dict[str, Any]]):
         counts: Dict[str, int] = {}
@@ -35,15 +41,14 @@ class TimelineDensityChart(QWidget):
         self.update()
 
     def paintEvent(self, event):
+        t = get_theme(self._theme_name)
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         rect = self.rect()
-        bg_col = self.palette().color(self.window().backgroundRole())
-        txt_col = self.palette().color(self.foregroundRole())
-        painter.fillRect(rect, bg_col)
+        painter.fillRect(rect, QColor(t["surface"]))
 
         if not self._buckets:
-            painter.setPen(QColor("#98A2B3"))
+            painter.setPen(QColor(t["text_muted"]))
             painter.drawText(rect, Qt.AlignCenter, "Zaman yoğunluğu verisi yok")
             return
 
@@ -61,10 +66,10 @@ class TimelineDensityChart(QWidget):
             h = max(4, int((cnt / max_c) * avail_h))
             y = pad_top + (avail_h - h)
 
-            painter.fillRect(int(x), int(y), int(bar_w), int(h), QColor("#3B719F"))
-            painter.setPen(txt_col)
+            painter.fillRect(int(x), int(y), int(bar_w), int(h), QColor(t["accent"]))
+            painter.setPen(QColor(t["text"]))
             painter.drawText(int(x), int(y) - 3, str(cnt))
-            painter.setPen(QColor("#94A3B8"))
+            painter.setPen(QColor(t["text_muted"]))
             painter.drawText(int(x), rect.height() - 6, lbl[-5:])
 
 
@@ -162,6 +167,9 @@ class TimelinePage(QWidget):
         main_layout.addWidget(splitter, 1)
 
         self.refresh_records()
+
+    def set_theme(self, theme_name: str):
+        self.chart.set_theme(theme_name)
 
     def refresh_records(self):
         self._all_events = self.svc.collect_case_timeline()

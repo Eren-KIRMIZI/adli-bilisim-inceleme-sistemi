@@ -3,6 +3,7 @@ Adheres strictly to NIST and forensic suite desktop interface guidelines.
 """
 
 from typing import Dict
+from PySide6.QtGui import QPalette, QColor
 
 # Primary Light Palette (Forensic Standard Light)
 LIGHT_THEME: Dict[str, str] = {
@@ -103,6 +104,23 @@ def get_theme(name: str = None) -> Dict[str, str]:
     return DARK_THEME if name == "dark" else LIGHT_THEME
 
 
+def build_palette(theme_name: str = "light") -> QPalette:
+    """Build explicit QPalette so Windows OS dark mode never bleeds into Light Mode widgets."""
+    t = get_theme(theme_name)
+    pal = QPalette()
+    pal.setColor(QPalette.Window, QColor(t["bg"]))
+    pal.setColor(QPalette.WindowText, QColor(t["text"]))
+    pal.setColor(QPalette.Base, QColor(t["surface"]))
+    pal.setColor(QPalette.AlternateBase, QColor(t["surface_subtle"]))
+    pal.setColor(QPalette.Text, QColor(t["text"]))
+    pal.setColor(QPalette.Button, QColor(t["surface"]))
+    pal.setColor(QPalette.ButtonText, QColor(t["text"]))
+    pal.setColor(QPalette.Highlight, QColor(t["accent"]))
+    pal.setColor(QPalette.HighlightedText, QColor("#FFFFFF"))
+    pal.setColor(QPalette.PlaceholderText, QColor(t["text_muted"]))
+    return pal
+
+
 def build_qss(theme_name: str = "light") -> str:
     t = get_theme(theme_name)
     return f"""
@@ -133,6 +151,16 @@ QStackedWidget#pageStack {{
 QScrollArea {{
     background-color: transparent;
     border: none;
+}}
+
+QScrollArea > QWidget > QWidget {{
+    background-color: transparent;
+}}
+
+QGraphicsView {{
+    background-color: {t['surface']};
+    border: 1px solid {t['border_light']};
+    border-radius: 6px;
 }}
 
 QLabel {{
@@ -193,7 +221,7 @@ QFrame#surfaceCard {{
 
 QFrame#subCard {{
     background-color: {t['surface_subtle']};
-    border: 1px solid {t['border_light']};
+    border: 1px solid {t['border']};
     border-radius: 6px;
 }}
 

@@ -66,6 +66,8 @@ class MetadataPanel(QFrame):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
+        scroll.viewport().setAutoFillBackground(False)
+        target_widget.setAutoFillBackground(False)
         scroll.setWidget(target_widget)
         return scroll
 

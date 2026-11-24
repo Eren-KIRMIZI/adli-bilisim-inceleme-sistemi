@@ -46,7 +46,7 @@ class SettingsPage(QWidget):
         cfg_card.setObjectName("surfaceCard")
         c_lay = QVBoxLayout(cfg_card)
         c_lay.setContentsMargins(16, 14, 16, 14)
-        c_lay.setSpacing(8)
+        c_lay.setSpacing(12)
 
         title = QLabel("Arayüz ve Adli Çalışma Politikası")
         title.setObjectName("sectionTitle")

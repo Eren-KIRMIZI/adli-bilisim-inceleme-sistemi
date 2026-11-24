@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPen, QBrush, QColor, QFont, QPainter
 
 from src.correlation_engine.correlation_service import CorrelationService
+from src.ui.styles.tokens import get_theme
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.status_indicator import StatusBadge
 
@@ -53,6 +54,7 @@ class RelationsPage(QWidget):
         super().__init__(parent)
         self.svc = CorrelationService(db_path=db_path)
         self._graph_data: Dict[str, Any] = {"nodes": [], "edges": []}
+        self._theme_name = "light"
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(24, 18, 24, 18)
@@ -130,9 +132,15 @@ class RelationsPage(QWidget):
 
         self.refresh_records()
 
+    def set_theme(self, theme_name: str):
+        self._theme_name = theme_name
+        self.refresh_records()
+
     def refresh_records(self):
+        t = get_theme(self._theme_name)
         self._graph_data = self.svc.build_case_graph(include_hypotheses=self.hyp_checkbox.isChecked())
         self.scene.clear()
+        self.scene.setBackgroundBrush(QBrush(QColor(t["surface"])))
 
         nodes = self._graph_data["nodes"]
         edges = self._graph_data["edges"]
@@ -151,16 +159,16 @@ class RelationsPage(QWidget):
             x2, y2 = coord_map[e["target"]]
             line = QGraphicsLineItem(x1, y1, x2, y2)
             if e["verified"]:
-                pen = QPen(QColor("#26845B"), 2.0, Qt.SolidLine)
+                pen = QPen(QColor(t["verified"]), 2.0, Qt.SolidLine)
             else:
-                pen = QPen(QColor("#B9822D"), 1.8, Qt.DashLine)
+                pen = QPen(QColor(t["warning"]), 1.8, Qt.DashLine)
             line.setPen(pen)
             line.setToolTip(f"{e['relation']}\nDayanak: {e['basis']}")
             self.scene.addItem(line)
 
         # Draw nodes on top
         label_font = QFont("Segoe UI", 8, QFont.Bold)
-        label_color = self.palette().color(self.foregroundRole())
+        label_color = QColor(t["text"])
         for n in nodes:
             cx, cy = coord_map[n["id"]]
             node_item = InteractiveNodeItem(n, cx, cy, self._on_node_clicked)

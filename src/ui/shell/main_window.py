@@ -4,8 +4,7 @@ from PySide6.QtCore import Qt
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Adli Bilişim İnceleme Sistemi")
-        self.resize(1280, 800)
+        self.setWindowTitle("Adli Bilişim İnceleme Sistemi"); self.resize(1280, 800)
         central = QWidget(); self.setCentralWidget(central)
         layout = QHBoxLayout(central); layout.setContentsMargins(0,0,0,0); layout.setSpacing(0)
         self.stack = QStackedWidget()
@@ -14,8 +13,7 @@ class MainWindow(QMainWindow):
         self._add_pages(); self._wire_sidebar()
 
     def _build_sidebar(self):
-        frame = QFrame(); frame.setFixedWidth(230)
-        frame.setStyleSheet("background:#1D2733; color:#F5F5F7;")
+        frame = QFrame(); frame.setFixedWidth(230); frame.setStyleSheet("background:#1D2733; color:#F5F5F7;")
         v = QVBoxLayout(frame); v.setContentsMargins(12,16,12,16); v.setSpacing(4)
         from PySide6.QtWidgets import QLabel
         t = QLabel("Forensics Suite"); t.setStyleSheet("font-size:16px;font-weight:bold;color:#F5F5F7;")
@@ -36,12 +34,17 @@ class MainWindow(QMainWindow):
         from src.ui.pages.timeline_page import TimelinePage
         from src.ui.pages.reports_page import ReportsPage
         from src.ui.pages.dashboard.dashboard_page import DashboardPage
+        from src.ui.pages.disk_forensics.disk_forensics_page import DiskForensicsPage
+        from src.ui.pages.windows_forensics.windows_forensics_page import WindowsForensicsPage
+        from src.ui.pages.usb_analysis.usb_analysis_page import UsbAnalysisPage
+        from src.ui.pages.browser_forensics.browser_forensics_page import BrowserAnalysisPage
+        from src.ui.pages.memory_forensics.memory_forensics_page import MemoryAnalysisPage
+        from src.ui.pages.relations.relations_page import RelationsPage
         from src.ui.pages.placeholder import make_page
         pages = [DashboardPage(), CasesPage(), EvidencePage(), IntegrityPage(),
-                 make_page("Disk Forensics"), make_page("Windows Forensics"),
-                 make_page("USB Analysis"), make_page("Browser Analysis"),
-                 make_page("Memory Analysis"), FileAnalysisPage(), TimelinePage(),
-                 make_page("Evidence Relations"), ReportsPage(), make_page("Settings")]
+                 DiskForensicsPage(), WindowsForensicsPage(), UsbAnalysisPage(),
+                 BrowserAnalysisPage(), MemoryAnalysisPage(), FileAnalysisPage(),
+                 TimelinePage(), RelationsPage(), ReportsPage(), make_page("Settings")]
         for p in pages: self.stack.addWidget(p)
 
     def _wire_sidebar(self):

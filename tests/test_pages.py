@@ -12,6 +12,9 @@ from src.ui.pages.evidence_page import EvidencePage
 from src.ui.pages.integrity_page import IntegrityPage
 from src.ui.pages.disk_forensics.disk_forensics_page import DiskForensicsPage
 from src.ui.pages.windows_forensics.windows_forensics_page import WindowsForensicsPage
+from src.ui.pages.file_analysis_page import FileAnalysisPage
+from src.ui.pages.browser_forensics.browser_forensics_page import BrowserAnalysisPage
+from src.ui.pages.memory_forensics.memory_forensics_page import MemoryAnalysisPage
 from src.ui.shell.main_window import MainWindow
 
 
@@ -96,6 +99,30 @@ def test_windows_forensics_page(qapp, tmp_path):
     for p in art_paths.values():
         page.load_artifact_file(p)
     assert page.art_table.rowCount() == 3
+
+
+def test_file_browser_memory_pages(qapp, tmp_path):
+    from src.file_engine.file_service import create_synthetic_exif_jpeg
+    from src.browser_engine.browser_service import create_synthetic_browser_databases
+    from src.memory_engine.memory_service import create_synthetic_memory_dump
+
+    jpg = str(tmp_path / "ui_exif.jpg")
+    create_synthetic_exif_jpeg(jpg)
+    fpage = FileAnalysisPage()
+    fpage.analyze_file(jpg)
+    assert "Canon EOS R5" in fpage.meta_view.toPlainText()
+
+    bpaths = create_synthetic_browser_databases(str(tmp_path / "ui_br"))
+    bpage = BrowserAnalysisPage()
+    bpage.load_artifact(bpaths["history"], browser_hint="Google Chrome")
+    assert bpage.tbl_history.rowCount() == 3
+
+    dmp = str(tmp_path / "ui_mem.dmp")
+    create_synthetic_memory_dump(dmp)
+    mpage = MemoryAnalysisPage()
+    mpage.load_dump(dmp)
+    assert mpage.tbl_pes.rowCount() == 1
+    assert mpage.tbl_iocs.rowCount() >= 2
 
 
 def test_main_window_integration(qapp):

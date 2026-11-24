@@ -17,8 +17,10 @@
 | 13 | Evidence Relations (NetworkX + etkileşimli grafik, kanıt/hipotez ayrımı) | Tamamlandı |
 | 14 | Report Generator (Jinja2 HTML & ReportLab PDF, canlı önizleme) | Tamamlandı |
 | 15 | Test (43 pytest), QSS görsel iyileştirme, WAL/elektrik kesintisi kurtarma | Tamamlandı |
+| 16 | **DFIR Dalga 1 (P0)**: NTFS Data Runs/parçalı MFT/tam yol, `$UsnJrnl:$J`, `BinXml` EVTX, `db` Registry/UserAssist/ShimCache | Tamamlandı |
+| 17 | **DFIR Dalga 2 (P1)**: Saf Python EnCase `.E01` EWF çözücü, 8 zamanlı Prefetch + OLE2 Jump List + ShellBags, KAPE-stili `TriageCollector` | Tamamlandı |
+| 18 | **DFIR Dalga 3 (P2)**: Bellek KDBG/`Proc` pool heuristiği + Volatility 3 algılama, yerel SQLite Hash Set (NSRL/IOC) & YARA-stili tarayıcı (52 test) | Tamamlandı |
 
 ## İsteğe Bağlı İleri Modüller (Gelecek Eklentiler)
-- E-posta inceleme (PST/OST/EML)
-- Gelişmiş Windows kullanıcı izleri (UserAssist / Amcache / SRUM / Jump Lists / ShellBags)
+- E-posta inceleme (PST/OST/EML), SRUM/Amcache derinleştirme ve tam çekirdek PDB sembol sunucusu entegrasyonu
 - Ağ analizi (PCAP / DNS geçmişi) ve BitLocker durum tespiti

@@ -50,12 +50,12 @@ Kritik adli incelemeler sırasında yaşanabilecek ani elektrik kesintisi, siste
 | **02** | **Vaka Yönetimi (Cases)** | `case_engine/` | Benzersiz vaka numarasıyla soruşturma açma, durum geçişleri (`open`, `in_progress`, `closed`, `archived`), bağlı deliller ve vaka bazlı denetim geçmişi. |
 | **03** | **Delil Yönetimi (Evidence)** | `evidence_engine/` | Cihaz/imaj envanteri, seri numarası, kapasite, yazma engelleyici (write-blocker) kaydı ve kabul anında tek geçişli SHA-256/SHA-512 hesaplama. |
 | **04** | **Bütünlük & Muhafaza Zinciri** | `integrity_engine/` | Büyük dosyalar için `QThread` SHA-256/SHA-512 doğrulama, referans hash karşılaştırma ve UNODC uyumlu teslim/erişim amacı kayıtları (`ChainOfCustodyEntry`). |
-| **05** | **Disk Forensics** | `ntfs_engine/` | Özgün **MBR & GPT** bölüm tablosu, **NTFS VBR (`$Boot`) & `$MFT`** (aktif ve silinmiş kayıtlar, MACB zamanları, USA fixup), **File Carving** imza tarayıcı; 3 sütunlu Finder düzeni + alt Hexadecimal görüntüleyici. |
-| **06** | **Windows Forensics** | `registry_engine/`, `eventlog_engine/` | Özgün **`regf` Registry Hive** ağacı, **`ElfFile` EVTX** olay günlüğü ayrıştırıcı (`4624/4625/4688/7045/1102`), **`.lnk`**, **Prefetch (`.pf`)**, **`$I` Geri Dönüşüm Kutusu** ayrıştırıcıları ve canlı Windows salt-okunur triage. |
+| **05** | **Disk Forensics** | `ntfs_engine/` | Saf Python **EnCase `.E01` (EWF)** akış çözücü, **MBR & GPT**, **NTFS VBR & `$MFT`** (`data_runs` parçalı MFT akışı, tam dizin yolu çözümleme, aktif ve silinmiş kayıtlar, MACB, USA fixup), **`$UsnJrnl:$J`**, akış tabanlı **File Carving**; 3 sütunlu Finder düzeni + Hex görüntüleyici. |
+| **06** | **Windows Forensics** | `registry_engine/`, `eventlog_engine/` | Özgün **`regf` Registry Hive** (`db` Big Data, **UserAssist ROT13**, **ShimCache**), yapısal **`BinXml`** **`ElfFile` EVTX**, **`.lnk`**, 8 zamanlı **Prefetch (`.pf`)**, OLE2 **Jump List**, **ShellBags**, **`$I`**, canlı triage ve **KAPE-stili `TriageCollector`**. |
 | **07** | **USB Cihaz Analizi** | `usb_engine/` | Canlı `winreg` (`USBSTOR`, `MountedDevices`) ve çevrimdışı `SYSTEM` kovanı analizi; VID/PID, seri no, sürücü harfi, kullanıcı ilişkisi ve şüpheli HID/BadUSB anomali tespiti. |
 | **08** | **Tarayıcı Analizi** | `browser_engine/` | Chrome, Edge ve Firefox SQLite (`History`, `places.sqlite`, `Cookies`, `cookies.sqlite`, `Bookmarks`) veritabanlarından ziyaret, indirme, arama terimi ve maskeli çerez metadata çıkarımı (WebKit & PRTime → UTC). |
-| **09** | **RAM Bellek Analizi** | `memory_engine/` | `PAGEDU64`, `PAGEDUMP`, `HIBR`, `ELF`, `LiME` döküm başlığı doğrulama, KDBG / bellek içi PE (`MZ/PE`) modül ve IPv4/URL IOC taraması; canlı Windows Toolhelp32 süreç anlık görüntüsü. |
-| **10** | **Dosya & Hex İnceleme** | `file_engine/` | Magic-byte dosya imzası & **uzantı sahteciliği (extension spoofing)** tespiti, Shannon entropisi, saf Python **JPEG EXIF** ayrıştırıcı, bayt düzeyinde dosya karşılaştırma (Diff) ve yinelenen dosya taraması. |
+| **09** | **RAM Bellek Analizi** | `memory_engine/` | `PAGEDU64`, `PAGEDUMP`, `HIBR`, `ELF`, `LiME` başlığı doğrulama, **KDBG**, açık heuristik etiketli **`Proc` pool `EPROCESS` adayları**, bellek içi PE (`MZ/PE`) & IPv4/URL IOC taraması, opsiyonel Volatility 3 kontrolü ve canlı Toolhelp32 süreç görüntüsü. |
+| **10** | **Dosya & Hex İnceleme** | `file_engine/` | Magic-byte dosya imzası & **uzantı sahteciliği**, Shannon entropisi, **JPEG EXIF**, yerel **SQLite Hash Set (NSRL Known-Good / Known-Bad)** ve saf Python **YARA-stili kural tarayıcısı**, bayt düzeyinde diff ve yinelenen dosya taraması. |
 | **11** | **Olay Zaman Çizelgesi** | `timeline_engine/` | USB, Muhafaza Zinciri ve Denetim kayıtlarını UTC standardında birleştirir; saatlik yoğunluk grafiği, kaynak/kullanıcı filtreleri ve iki olay arası zaman farkı ($\Delta t$) hesabı sunar. |
 | **12** | **Bulgu İlişkilendirme** | `correlation_engine/` | NetworkX + etkileşimli `QGraphicsView` ile vaka-delil-kullanıcı-USB grafiği oluşturur; kanıtlı bağlantılar ile kanıtlanmamış zamansal hipotezleri net ayırır. |
 | **13** | **Adli Rapor Oluşturucu** | `report_engine/` | Jinja2 ile **HTML** (canlı önizlemeli) ve ReportLab ile Türkçe font destekli **PDF** denetlenebilir adli inceleme raporu üretir. |
@@ -114,7 +114,7 @@ Uygulama ilk açılışta `data/forensics.db` veritabanını WAL modunda oluştu
 python -m pytest -v
 ```
 
-Test paketi sentetik MBR/NTFS/$MFT imajları, `regf` Registry kovanları, `ElfFile` EVTX kayıtları, `.lnk`/`.pf`/`$I` dosyaları, EXIF JPEG'ler, Chrome SQLite veritabanları, crash dump başlıkları, WAL/kurtarma senaryoları ve headless PySide6 arayüz bileşenlerini kapsayan **43 otomatik test** içerir.
+Test paketi sentetik MBR/NTFS/$MFT/.E01 imajları, `$UsnJrnl:$J`, `regf` Registry kovanları (UserAssist/ShimCache), yapısal `BinXml` EVTX kayıtları, `.lnk`/8-TS `.pf`/Jump List/`$I` dosyaları, `TriageCollector`, YARA/HashSet, EXIF JPEG'ler, Chrome SQLite veritabanları, crash dump başlıkları, WAL/kurtarma senaryoları ve headless PySide6 arayüz bileşenlerini kapsayan **52 otomatik test** içerir.
 
 ---
 

@@ -25,6 +25,7 @@ class MemoryAnalysisPage(QWidget):
         self._pe_rows: List[Dict[str, Any]] = []
         self._ioc_rows: List[Dict[str, Any]] = []
         self._proc_rows: List[Dict[str, Any]] = []
+        self._eproc_rows: List[Dict[str, Any]] = []
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(24, 18, 24, 18)
@@ -81,14 +82,17 @@ class MemoryAnalysisPage(QWidget):
         self.tbl_procs = ForensicDataTable(["PID", "PPID", "Süreç Adı", "Thread", "Öncelik"], self)
         self.tbl_pes = ForensicDataTable(["Offset", "Tür", "Mimari"], self)
         self.tbl_iocs = ForensicDataTable(["Tür", "Offset", "Değer"], self)
+        self.tbl_eprocs = ForensicDataTable(["Offset", "Aday İmaj Adı", "Güvenilirlik"], self)
 
         self.tbl_pes.rowSelected.connect(self._on_pe_selected)
         self.tbl_iocs.rowSelected.connect(self._on_ioc_selected)
         self.tbl_procs.rowSelected.connect(self._on_proc_selected)
+        self.tbl_eprocs.rowSelected.connect(self._on_eproc_selected)
 
         self.tabs.addTab(self.tbl_procs, "⚙️ Canlı Süreçler (PID/PPID)")
         self.tabs.addTab(self.tbl_pes, "🧩 Bellek PE Modülleri (MZ/PE)")
         self.tabs.addTab(self.tbl_iocs, "🌐 Bellek Ağ & IOC Kalıntıları")
+        self.tabs.addTab(self.tbl_eprocs, "🔍 Proc Pool Adayları (Heuristik)")
         splitter.addWidget(self.tabs)
 
         right = QFrame()
@@ -135,17 +139,29 @@ class MemoryAnalysisPage(QWidget):
                 {"Tür": i["kind"], "Offset": i["offset_hex"], "Değer": i["value"]}
                 for i in res["iocs"]
             ]
+            self._eproc_rows = [
+                {"Offset": e["offset_hex"], "Aday İmaj Adı": e["image_name"], "Güvenilirlik": e["confidence"]}
+                for e in res.get("eprocess_candidates", [])
+            ]
             self._apply_filters()
 
             kdbg = ", ".join(res["kdbg_offsets"]) if res["kdbg_offsets"] else "Bulunamadı"
+            vol3 = res.get("volatility3", {})
+            vol3_txt = (
+                f"Tespit edildi ({vol3.get('cli_path') or 'Python Paketi'})"
+                if vol3.get("available")
+                else "Kurulu değil (Opsiyonel)"
+            )
             self.summary_view.setPlainText(
                 f"DOSYA:      {res['filename']}\n"
                 f"BOYUT:      {res['size_bytes']:,} bayt\n"
                 f"FORMAT:     {res['format']}\n"
                 f"MİMARİ:     {res['architecture']}\n"
                 f"KDBG İZİ:   {kdbg}\n"
+                f"PROC ADAYI: {len(self._eproc_rows)} adet (Heuristik)\n"
                 f"PE MODÜLÜ:  {len(self._pe_rows)} adet\n"
                 f"IOC İZİ:    {len(self._ioc_rows)} adet\n"
+                f"VOLATILITY3:{vol3_txt}\n"
             )
             self.hex_viewer.load_bytes(res["header_bytes"])
             self.tabs.setCurrentIndex(1)
@@ -182,6 +198,7 @@ class MemoryAnalysisPage(QWidget):
         self.tbl_procs.set_records(filt(self._proc_rows))
         self.tbl_pes.set_records(filt(self._pe_rows))
         self.tbl_iocs.set_records(filt(self._ioc_rows))
+        self.tbl_eprocs.set_records(filt(self._eproc_rows))
 
     def _on_pe_selected(self, row: Dict[str, Any]):
         self.summary_view.setPlainText(f"PE MODÜLÜ\nOffset: {row['Offset']}\nMimari: {row['Mimari']}\nTür:    {row['Tür']}")
@@ -189,6 +206,14 @@ class MemoryAnalysisPage(QWidget):
 
     def _on_ioc_selected(self, row: Dict[str, Any]):
         self.summary_view.setPlainText(f"BELLEK IOC BULGUSU\nTür:    {row['Tür']}\nOffset: {row['Offset']}\nDeğer:  {row['Değer']}")
+
+    def _on_eproc_selected(self, row: Dict[str, Any]):
+        self.summary_view.setPlainText(
+            f"EPROCESS / PROC POOL ADAYI (HEURİSTİK)\n"
+            f"Aday Süreç:   {row['Aday İmaj Adı']}\n"
+            f"Pool Offset:  {row['Offset']}\n"
+            f"Güvenilirlik: {row['Güvenilirlik']}"
+        )
 
     def _on_proc_selected(self, row: Dict[str, Any]):
         self.summary_view.setPlainText(

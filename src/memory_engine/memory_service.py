@@ -1,16 +1,18 @@
-"""Memory Forensics Engine: Binary dump header inspection, PE/IOC discovery & live Windows process snapshot.
+"""Memory Forensics Engine: Dump header/KDBG inspection, PE/IOC & Proc pool heuristic, Volatility 3 check, live snapshot.
 
-Strict forensic honesty: Unsupported or encrypted RAM formats are flagged explicitly
-and never produce fabricated process trees or fake network connections.
+Strict forensic honesty: Pool-tag EPROCESS candidates and raw strings are explicitly flagged
+with heuristic confidence and never presented as full PDB-verified process trees.
 """
 
 import ctypes
 from ctypes import wintypes
+import importlib.util
 import os
 import re
+import shutil
 import struct
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 IS_WINDOWS = os.name == "nt" and hasattr(ctypes, "windll")
 
@@ -19,7 +21,14 @@ class MemoryForensicsEngine:
     """Original RAM dump inspector and live Windows volatile process triage."""
 
     PARSER_NAME = "AdliBilisim-Original-Memory-Engine"
-    PARSER_VERSION = "1.0.0"
+    PARSER_VERSION = "2.0.0"
+
+    @staticmethod
+    def detect_volatility3() -> Dict[str, Any]:
+        """Check whether optional Volatility 3 CLI or Python package is installed."""
+        cli = shutil.which("vol") or shutil.which("vol3")
+        pkg = importlib.util.find_spec("volatility3") is not None
+        return {"available": bool(cli or pkg), "cli_path": cli, "python_pkg": pkg}
 
     def inspect_memory_dump(self, dump_path: str, max_scan_mb: int = 32) -> Dict[str, Any]:
         """Inspect a RAM dump file read-only without fabricating unverified structures."""
@@ -36,32 +45,61 @@ class MemoryForensicsEngine:
         if fmt == "Bilinmeyen / Desteklenmeyen Format":
             warnings.append(
                 "Bilinen bellek döküm başlığı (PAGEDU64/PAGEDUMP/ELF/HIBR/LiME) tespit edilmedi; "
-                "RAW bellek olarak yalnızca doğrulanabilir KDBG, PE başlıkları ve ağ/IOC string kalıntıları taranmaktadır."
+                "RAW bellek olarak yalnızca doğrulanabilir KDBG, PE başlıkları, Proc pool adayları ve IOC kalıntıları taranmaktadır."
             )
         else:
             warnings.append(
-                "Tam çekirdek sembol tablosu (PDB) olmadan EPROCESS süreç ağacı türetilmez; "
-                "yalnızca ham dökümde doğrudan doğrulanan başlıklar, PE modülleri ve IOC kalıntıları listelenmiştir."
+                "Tam çekirdek sembol tablosu (PDB) olmadan kesin EPROCESS ağacı türetilmez; "
+                "doğrulanan başlıklar, KDBG işaretçileri, PE modülleri ve düşük/orta güvenilirlikli Proc havuz adayları listelenmiştir."
             )
 
         scan_limit = min(size, max_scan_mb * 1024 * 1024)
         pe_modules: List[Dict[str, Any]] = []
         iocs: List[Dict[str, Any]] = []
-        kdbg_offsets: List[str] = []
+        kdbg_blocks: List[Dict[str, Any]] = []
+        eprocess_candidates: List[Dict[str, Any]] = []
 
         with open(dump_path, "rb") as f:
             data = f.read(scan_limit)
 
-        # Scan for KDBG kernel debug blocks
+        # 1. Scan for KDBG kernel debug blocks & parse pointers if large enough
         pos = 0
-        while True:
+        while len(kdbg_blocks) < 10:
             idx = data.find(b"KDBG", pos)
-            if idx == -1 or len(kdbg_offsets) >= 10:
+            if idx == -1:
                 break
-            kdbg_offsets.append(f"0x{idx:08X}")
+            info = {"offset_hex": f"0x{idx:08X}"}
+            if idx >= 16 and idx + 80 <= len(data):
+                # In _DBGKD_DEBUG_DATA_HEADER64, OwnerTag 'KDBG' is at +16 (size at +20)
+                ps_loaded = struct.unpack("<Q", data[idx + 56:idx + 64])[0] if idx + 64 <= len(data) else 0
+                ps_active = struct.unpack("<Q", data[idx + 64:idx + 72])[0] if idx + 72 <= len(data) else 0
+                info["ps_loaded_modules_ptr"] = f"0x{ps_loaded:016X}"
+                info["ps_active_process_ptr"] = f"0x{ps_active:016X}"
+            kdbg_blocks.append(info)
             pos = idx + 4
 
-        # Scan for in-memory PE headers (MZ ... PE\x00\x00)
+        # 2. Scan for Windows 'Proc' pool tag heuristic + nearby ImageFileName (.exe)
+        pos = 0
+        seen_proc = set()
+        while len(eprocess_candidates) < 150:
+            idx = data.find(b"Proc", pos)
+            if idx == -1:
+                break
+            window = data[idx:min(len(data), idx + 1536)]
+            m = re.search(rb"([a-zA-Z0-9_\-]{2,20}\.exe)\x00", window)
+            if m:
+                name = m.group(1).decode("ascii", "replace")
+                key = (idx, name)
+                if key not in seen_proc:
+                    seen_proc.add(key)
+                    eprocess_candidates.append({
+                        "offset_hex": f"0x{idx:08X}",
+                        "image_name": name,
+                        "confidence": "Orta (Proc Pool Heuristiği — PDB Doğrulamasız)",
+                    })
+            pos = idx + 4
+
+        # 3. Scan for in-memory PE headers (MZ ... PE\x00\x00)
         pos = 0
         while len(pe_modules) < 200:
             idx = data.find(b"MZ", pos)
@@ -81,7 +119,7 @@ class MemoryForensicsEngine:
                         })
             pos = idx + 2
 
-        # Scan for IPv4 & HTTP/HTTPS URL strings in memory
+        # 4. Scan for IPv4 & HTTP/HTTPS URL strings in memory
         for m in re.finditer(rb"https?://[a-zA-Z0-9\.\-_:/\?=&%]{6,120}", data):
             if len(iocs) >= 150:
                 break
@@ -108,9 +146,12 @@ class MemoryForensicsEngine:
             "format": fmt,
             "architecture": arch,
             "header_details": hdr_details,
-            "kdbg_offsets": kdbg_offsets,
+            "kdbg_offsets": [k["offset_hex"] for k in kdbg_blocks],
+            "kdbg_blocks": kdbg_blocks,
+            "eprocess_candidates": eprocess_candidates,
             "pe_modules": pe_modules,
             "iocs": iocs,
+            "volatility3": self.detect_volatility3(),
             "warnings": warnings,
             "header_bytes": head,
         }
@@ -175,7 +216,7 @@ class MemoryForensicsEngine:
 
 
 def create_synthetic_memory_dump(output_path: str) -> str:
-    """Create a controlled synthetic Windows PAGEDU64 dump containing PE & IOC artifacts."""
+    """Create a controlled synthetic Windows PAGEDU64 dump containing KDBG, Proc pool candidate, PE & IOC artifacts."""
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     buf = bytearray(32768)
     buf[0:8] = b"PAGEDU64"
@@ -186,7 +227,11 @@ def create_synthetic_memory_dump(output_path: str) -> str:
     buf[pe_off:pe_off + 2] = b"MZ"
     struct.pack_into("<I", buf, pe_off + 0x3C, 0x80)
     buf[pe_off + 0x80:pe_off + 0x84] = b"PE\x00\x00"
-    struct.pack_into("<H", buf, pe_off + 0x84, 0x8664)  # AMD64
+    struct.pack_into("<H", buf, pe_off + 0x84, 0x8664)
+
+    # Embed synthetic Proc pool tag + ImageFileName
+    buf[0x2800:0x2804] = b"Proc"
+    buf[0x2900:0x2910] = b"beacon_svc.exe\x00\x00"
 
     # Embed IOC strings at 0x3000
     iocs = b"http://198.51.100.42:8080/beacon.bin\x00C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\x00192.168.1.50\x00"

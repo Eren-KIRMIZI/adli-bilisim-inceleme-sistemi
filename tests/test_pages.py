@@ -91,7 +91,7 @@ def test_windows_forensics_page(qapp, tmp_path):
 
     for p in art_paths.values():
         page.load_artifact_file(p)
-    assert page.art_table.rowCount() == 3
+    assert page.art_table.rowCount() >= 4
 
 
 def test_file_browser_memory_pages(qapp, tmp_path):
@@ -116,6 +116,7 @@ def test_file_browser_memory_pages(qapp, tmp_path):
     mpage.load_dump(dmp)
     assert mpage.tbl_pes.rowCount() == 1
     assert mpage.tbl_iocs.rowCount() >= 2
+    assert mpage.tbl_eprocs.rowCount() >= 1
 
 
 def test_timeline_relations_reports_settings_pages(qapp, tmp_path):

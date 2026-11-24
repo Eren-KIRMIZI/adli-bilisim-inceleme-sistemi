@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt
 from src.registry_engine.hive_parser import RegistryHiveParser, create_synthetic_registry_hive
 from src.registry_engine.windows_artifacts import WindowsArtifactParsers, create_synthetic_windows_artifacts
 from src.eventlog_engine.evtx_service import EventLogService, create_synthetic_evtx_file
+from src.core.triage_collector import TriageCollector
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.search_field import ForensicSearchField
 from src.ui.components.data_table import ForensicDataTable
@@ -312,7 +313,7 @@ class WindowsForensicsPage(QWidget):
         self.art_filter = QComboBox()
         self.art_filter.addItems([
             "Tüm Artefaktlar", "Başlangıç (Autorun)", "Servis", "Kullanıcı Hesabı",
-            "UserAssist", "ShimCache", "Prefetch (.pf)", "LNK Kısayolu", "Geri Dönüşüm Kutusu ($I)"
+            "UserAssist", "ShimCache", "Prefetch (.pf)", "LNK Kısayolu", "Jump List", "Geri Dönüşüm Kutusu ($I)"
         ])
         self.art_filter.setFixedWidth(190)
         self.art_filter.currentIndexChanged.connect(self._apply_artifact_filters)
@@ -323,7 +324,11 @@ class WindowsForensicsPage(QWidget):
         triage_btn.clicked.connect(self._scan_live_triage)
         toolbar.addWidget(triage_btn)
 
-        open_art_btn = QPushButton("📁 .pf / .lnk / $I Aç")
+        pack_btn = QPushButton("📦 KAPE Triage Paketi")
+        pack_btn.clicked.connect(self._collect_kape_triage)
+        toolbar.addWidget(pack_btn)
+
+        open_art_btn = QPushButton("📁 .pf / .lnk / JumpList Aç")
         open_art_btn.clicked.connect(self._open_artifact_file)
         toolbar.addWidget(open_art_btn)
 
@@ -387,10 +392,28 @@ class WindowsForensicsPage(QWidget):
             self,
             "Windows Artefakt Dosyası Seç",
             "",
-            "Artefaktlar (*.pf *.lnk $I*);;Tüm Dosyalar (*.*)"
+            "Artefaktlar (*.pf *.lnk *.automaticDestinations-ms $I*);;Tüm Dosyalar (*.*)"
         )
         if fp:
             self.load_artifact_file(fp)
+
+    def _collect_kape_triage(self):
+        out_dir = QFileDialog.getExistingDirectory(
+            self, "KAPE-Stili Triage Çalışma Kopyası Hedef Klasörü Seç", os.path.join("data", "triage_packages")
+        )
+        if not out_dir:
+            return
+        res = TriageCollector.collect_live_system_triage(out_dir, max_per_target=25)
+        summary_lines = [
+            f"{k}: {v['collected']} dosya kopyalandı ({v['skipped']} atlandı)"
+            for k, v in res.get("targets", {}).items()
+        ]
+        msg = "\n".join(summary_lines) if summary_lines else "Erişilebilir canlı triage hedefi bulunamadı."
+        QMessageBox.information(
+            self,
+            "KAPE-Stili Triage Tamamlandı",
+            f"Oturum Klasörü:\n{res['session_dir']}\n\n{msg}\n\nHer hedef için SHA-256 triage_manifest.json üretildi."
+        )
 
     def _load_synthetic_artifacts(self):
         paths = create_synthetic_windows_artifacts(os.path.join("data", "sample_win_artifacts"))
@@ -399,8 +422,9 @@ class WindowsForensicsPage(QWidget):
 
     def load_artifact_file(self, path: str):
         base = os.path.basename(path)
+        lower_base = base.lower()
         try:
-            if base.lower().endswith(".lnk"):
+            if lower_base.endswith(".lnk"):
                 p = WindowsArtifactParsers.parse_lnk(path)
                 ts = p["target_modified"].strftime("%Y-%m-%d %H:%M") if p["target_modified"] else "-"
                 self._artifact_rows.insert(0, {
@@ -412,18 +436,37 @@ class WindowsForensicsPage(QWidget):
                     "Kaynak": f"Boyut: {p['target_file_size']:,} B | Dizin: {p['working_dir']}",
                     "_raw": p["raw_bytes"],
                 })
-            elif base.lower().endswith(".pf"):
+            elif lower_base.endswith(".pf"):
                 p = WindowsArtifactParsers.parse_prefetch(path)
                 ts = p["last_run"].strftime("%Y-%m-%d %H:%M") if p["last_run"] else "-"
+                runs_fmt = ", ".join(t.strftime("%Y-%m-%d %H:%M:%S") for t in p.get("last_run_times", [])) or "-"
+                loaded_fmt = "\n  • ".join(p.get("loaded_files", [])[:25]) or "(Yok)"
                 self._artifact_rows.insert(0, {
                     "Durum": "Uyarı" if p["warnings"] else "Doğrulandı",
                     "Artefakt Türü": p["artifact_type"],
                     "Ad / Dosya": p["executable"],
                     "Hedef / Değer / Yol": f"Hash: {p.get('prefetch_hash', '-')} | Sürüm: {p['version']}",
                     "Zaman / Sayaç": f"{ts} (Çalışma: {p['run_count'] if p['run_count'] is not None else '?'})",
-                    "Kaynak": base,
+                    "Kaynak": f"{base} | {len(p.get('loaded_files', []))} modül",
+                    "_extra_detail": f"SON ÇALIŞTIRMA ZAMANLARI (8 Slot):\n{runs_fmt}\n\nYÜKLENEN DOSYALAR:\n  • {loaded_fmt}",
                     "_raw": p["raw_bytes"],
                 })
+            elif lower_base.endswith(".automaticdestinations-ms"):
+                jl_entries = WindowsArtifactParsers.parse_jump_list(path)
+                if not jl_entries:
+                    QMessageBox.information(self, "Jump List Boş", f"'{base}' içinde çözümlenebilir LNK akışı bulunamadı.")
+                    return
+                for jl in jl_entries:
+                    ts = jl["target_modified"].strftime("%Y-%m-%d %H:%M") if jl["target_modified"] else "-"
+                    self._artifact_rows.insert(0, {
+                        "Durum": "Doğrulandı",
+                        "Artefakt Türü": jl["artifact_type"],
+                        "Ad / Dosya": jl["filename"],
+                        "Hedef / Değer / Yol": jl["target_path"],
+                        "Zaman / Sayaç": ts,
+                        "Kaynak": f"Akış: {jl.get('stream_name', '-')} | Dizin: {jl['working_dir']}",
+                        "_raw": jl["raw_bytes"],
+                    })
             elif base.startswith("$I"):
                 p = WindowsArtifactParsers.parse_recycle_bin_i(path)
                 ts = p["deleted_at"].strftime("%Y-%m-%d %H:%M") if p["deleted_at"] else "-"
@@ -437,7 +480,7 @@ class WindowsForensicsPage(QWidget):
                     "_raw": p["raw_bytes"],
                 })
             else:
-                QMessageBox.warning(self, "Desteklenmeyen Tür", f"'{base}' desteklenen .pf, .lnk veya $I formatında değil.")
+                QMessageBox.warning(self, "Desteklenmeyen Tür", f"'{base}' desteklenen .pf, .lnk, .automaticDestinations-ms veya $I formatında değil.")
                 return
 
             self._apply_artifact_filters()
@@ -457,12 +500,13 @@ class WindowsForensicsPage(QWidget):
         self.art_table.set_records(rows)
 
     def _on_artifact_selected(self, row: Dict[str, Any]):
+        extra = f"\n\n{row['_extra_detail']}" if row.get("_extra_detail") else ""
         self.art_detail.setPlainText(
             f"ARTEFAKT TÜRÜ: {row['Artefakt Türü']}\n"
             f"AD / DOSYA:    {row['Ad / Dosya']}\n"
             f"DURUM:         {row['Durum']}\n"
             f"ZAMAN / SAYAÇ: {row['Zaman / Sayaç']}\n"
             f"KAYNAK:        {row['Kaynak']}\n\n"
-            f"HEDEF / DEĞER:\n{row['Hedef / Değer / Yol']}"
+            f"HEDEF / DEĞER:\n{row['Hedef / Değer / Yol']}{extra}"
         )
         self.art_hex.load_bytes(row.get("_raw", b""))

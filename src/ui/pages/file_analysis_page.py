@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from src.file_engine.file_service import FileAnalysisService, create_synthetic_exif_jpeg
+from src.file_engine.threat_scanner import YaraStyleScanner, HashSetService
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.data_table import ForensicDataTable
 from src.ui.components.hex_viewer import ForensicHexViewer
@@ -18,8 +19,10 @@ from src.ui.components.status_indicator import StatusBadge
 class FileAnalysisPage(QWidget):
     """Comprehensive File Forensic Analysis workbench."""
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, hashset_db_path: str = "data/hashsets.db"):
         super().__init__(parent)
+        self.yara_scanner = YaraStyleScanner()
+        self.hashset_service = HashSetService(db_path=hashset_db_path)
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(24, 18, 24, 18)
@@ -186,10 +189,28 @@ class FileAnalysisPage(QWidget):
             QMessageBox.warning(self, "Dosya Bulunamadı", "Lütfen geçerli bir dosya yolu seçin.")
             return
         res = FileAnalysisService.analyze(path)
-        if res["extension_mismatch"]:
+        yara_hits = self.yara_scanner.scan_file(path)
+        hs_hit = self.hashset_service.lookup(res["sha256"])
+
+        if yara_hits or (hs_hit and hs_hit["category"] == "known_bad"):
+            self.sig_badge.set_status("⚠️ YARA / Kötücül Hash Uyarısı!", "critical")
+        elif res["extension_mismatch"]:
             self.sig_badge.set_status("⚠️ Uzantı/İmza Uyuşmazlığı!", "critical")
         else:
             self.sig_badge.set_status(f"İmza: {res['signature_type']}", "verified")
+
+        if hs_hit:
+            hs_text = f"EŞLEŞTİ [{hs_hit['category']}] — {hs_hit['label']} ({hs_hit['source']})"
+        else:
+            hs_text = "Yerel NSRL / IOC hash setinde eşleşme yok."
+
+        if yara_hits:
+            yara_lines = "\n".join(
+                f"  • [{h['severity']}] {h['rule']} @ {h['offset_hex']}: {h['match_preview']}"
+                for h in yara_hits
+            )
+        else:
+            yara_lines = "  Temiz (Yerleşik YARA-stili kurallarla eşleşme yok)"
 
         exif_lines = "\n".join(f"  {k}: {v}" for k, v in res["exif"].items()) if res["exif"] else "  (EXIF verisi yok)"
         txt = (
@@ -200,6 +221,8 @@ class FileAnalysisPage(QWidget):
             f"DOSYA İMZASI:  {res['signature_type']} (Kesinlik: {res['signature_confidence']})\n"
             f"UZANTI RİSKİ:  {'UYUŞMAZLIK TESPİT EDİLDİ' if res['extension_mismatch'] else 'Tutarlı'}\n"
             f"ENTROPİ:       {res['entropy']} bit/bayt ({res['entropy_note']})\n\n"
+            f"HASH SET (NSRL / IOC):\n  {hs_text}\n\n"
+            f"YARA-STİLİ KURAL TARAMASI:\n{yara_lines}\n\n"
             f"ZAMAN DAMGALARI (UTC):\n"
             f"  Oluşturulma:  {res['created_utc']}\n"
             f"  Değiştirilme: {res['modified_utc']}\n"

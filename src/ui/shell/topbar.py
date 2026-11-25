@@ -2,6 +2,7 @@
 
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton
 from PySide6.QtCore import Signal
+from src.ui.styles.icons import get_brand_pixmap
 
 
 class Topbar(QFrame):
@@ -22,8 +23,13 @@ class Topbar(QFrame):
         title_box = QHBoxLayout()
         title_box.setSpacing(8)
 
-        logo_lbl = QLabel("🛡️")
-        logo_lbl.setStyleSheet("font-size: 20px;")
+        logo_lbl = QLabel()
+        pix = get_brand_pixmap(32)
+        if not pix.isNull():
+            logo_lbl.setPixmap(pix)
+        else:
+            logo_lbl.setText("🛡️")
+        logo_lbl.setFixedSize(34, 34)
         title_box.addWidget(logo_lbl)
 
         title_lbl = QLabel("ADLİ BİLİŞİM İNCELEME SİSTEMİ")

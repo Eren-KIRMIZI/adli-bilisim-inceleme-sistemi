@@ -52,3 +52,21 @@ def test_metadata_panel(qapp):
         "Durum": "Normal"
     })
     assert mp.status_badge.text() != ""
+
+
+def test_brand_assets_svg_icons_and_collapsible_sidebar(qapp):
+    """Verify Gemini Banana assets, SVG navigation icons, and collapsible sidebar toggle."""
+    from src.ui.styles.icons import get_brand_pixmap, get_banner_pixmap, render_svg_icon
+    from src.ui.shell.sidebar import Sidebar
+
+    assert not get_brand_pixmap(32).isNull()
+    assert not get_banner_pixmap("light").isNull()
+    assert not get_banner_pixmap("dark").isNull()
+    assert not render_svg_icon("disk").isNull()
+
+    sb = Sidebar()
+    assert sb.width() == 235
+    sb.toggle_collapse()
+    assert sb.width() == 64
+    sb.toggle_collapse()
+    assert sb.width() == 235

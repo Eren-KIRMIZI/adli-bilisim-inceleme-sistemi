@@ -5,11 +5,13 @@ from PySide6.QtWidgets import (
     QStackedWidget, QApplication
 )
 from PySide6.QtCore import QTimer
+from PySide6.QtGui import QIcon
 
 from src.ui.shell.topbar import Topbar
 from src.ui.shell.sidebar import Sidebar
 from src.ui.shell.statusbar import Statusbar
 from src.ui.styles.tokens import build_qss, build_palette
+from src.ui.styles.icons import get_asset_path
 from src.case_engine.case_service import CaseService
 from src.evidence_engine.evidence_service import EvidenceService
 from src.core.recovery import RecoveryManager
@@ -19,6 +21,7 @@ class MainWindow(QMainWindow):
     def __init__(self, db_path: str = "data/forensics.db", data_dir: str = "data"):
         super().__init__()
         self.setWindowTitle("Adli Bilişim İnceleme Sistemi (Digital Forensics Suite)")
+        self.setWindowIcon(QIcon(get_asset_path("brand_shield.png")))
         self.resize(1400, 880)
         self.setMinimumSize(1100, 700)
 
@@ -205,6 +208,8 @@ class MainWindow(QMainWindow):
         self.settings_page.theme_combo.blockSignals(True)
         self.settings_page.theme_combo.setCurrentIndex(0 if theme_name == "light" else 1)
         self.settings_page.theme_combo.blockSignals(False)
+        if hasattr(self.dashboard_page, "set_theme"):
+            self.dashboard_page.set_theme(theme_name)
         if hasattr(self.timeline_page, "set_theme"):
             self.timeline_page.set_theme(theme_name)
         if hasattr(self.relations_page, "set_theme"):

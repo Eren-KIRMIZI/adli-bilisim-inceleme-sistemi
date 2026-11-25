@@ -6,11 +6,13 @@ from PySide6.QtWidgets import (
     QFileDialog, QTextEdit
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPainter, QColor, QPainterPath
 from src.case_engine.case_service import CaseService
 from src.evidence_engine.evidence_service import EvidenceService
 from src.usb_engine.usb_service import UsbService
 from src.core.orchestrator import AnalysisOrchestrator
 from src.ui.workers import FunctionWorker
+from src.ui.styles.icons import get_banner_pixmap, get_brand_pixmap
 from src.database.models import (
     init_db, AuditLog, Case, Evidence, UsbDeviceRecord, ForensicArtifact, verify_audit_chain
 )
@@ -18,6 +20,65 @@ from src.database.seed import seed_database_if_empty
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.status_indicator import StatusBadge
 from src.ui.components.data_table import ForensicDataTable
+
+
+class ForensicLabBanner(QFrame):
+    """Sleek rounded hero strip displaying the Gemini Banana lab artwork in Light/Dark theme."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("surfaceCard")
+        self.setFixedHeight(92)
+        self._theme_name = "light"
+        self._banner_pix = get_banner_pixmap("light")
+
+        lay = QHBoxLayout(self)
+        lay.setContentsMargins(18, 12, 18, 12)
+        lay.setSpacing(14)
+
+        shield = QLabel()
+        spix = get_brand_pixmap(48)
+        if not spix.isNull():
+            shield.setPixmap(spix)
+        shield.setFixedSize(52, 52)
+        shield.setStyleSheet("background: transparent;")
+        lay.addWidget(shield)
+
+        txt_col = QVBoxLayout()
+        txt_col.setSpacing(2)
+        self.title_lbl = QLabel("Adli Bilişim İnceleme Laboratuvarı")
+        self.title_lbl.setStyleSheet("font-size: 16px; font-weight: 700; background: transparent;")
+        self.sub_lbl = QLabel(
+            "ISO/IEC 27037 • NIST SP 800-86 • SWGDE • Salt-Okunur Çevrimdışı DFIR Platformu"
+        )
+        self.sub_lbl.setObjectName("mutedLabel")
+        self.sub_lbl.setStyleSheet("background: transparent;")
+        txt_col.addWidget(self.title_lbl)
+        txt_col.addWidget(self.sub_lbl)
+        lay.addLayout(txt_col)
+        lay.addStretch()
+
+    def set_theme(self, theme_name: str):
+        self._theme_name = theme_name
+        self._banner_pix = get_banner_pixmap(theme_name)
+        t_col = "#F1F5F9" if theme_name == "dark" else "#1D2733"
+        s_col = "#CBD5E1" if theme_name == "dark" else "#475467"
+        self.title_lbl.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {t_col}; background: transparent;")
+        self.sub_lbl.setStyleSheet(f"font-size: 12px; color: {s_col}; background: transparent;")
+        self.update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self._banner_pix.isNull():
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        r = self.rect().adjusted(1, 1, -1, -1)
+        path = QPainterPath()
+        path.addRoundedRect(r, 7, 7)
+        painter.setClipPath(path)
+        scaled = self._banner_pix.scaled(r.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
+        painter.drawPixmap(r.topLeft(), scaled)
 
 class DashboardPage(QWidget):
     """Forensic overview page showing case metrics, audit logs, and evidence health."""
@@ -41,6 +102,10 @@ class DashboardPage(QWidget):
         refresh_btn.clicked.connect(self.refresh_data)
         top_bar.addWidget(refresh_btn)
         main_layout.addLayout(top_bar)
+
+        # 1b. Gemini Banana Forensic Lab Hero Strip
+        self.hero_banner = ForensicLabBanner(self)
+        main_layout.addWidget(self.hero_banner)
 
         # 2. KPI Summary Cards Grid
         kpi_grid = QGridLayout()
@@ -324,6 +389,10 @@ class DashboardPage(QWidget):
                 self.lbl_vaka_no.setText(f"Vaka No: {c.case_number}")
                 self.lbl_vaka_title.setText(f"Konu: {c.title}")
                 self.lbl_vaka_investigator.setText(f"Uzman: {c.investigator or '-'} ({c.organization or 'Adli Birim'})")
+
+    def set_theme(self, theme_name: str):
+        if hasattr(self, "hero_banner"):
+            self.hero_banner.set_theme(theme_name)
 
     def _goto_page(self, index: int):
         window = self.window()

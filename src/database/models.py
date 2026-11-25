@@ -213,4 +213,4 @@ def init_db(db_path="data/forensics.db"):
         if "prev_hash" not in cols:
             conn.execute(text("ALTER TABLE audit_logs ADD COLUMN prev_hash VARCHAR(64)"))
             conn.commit()
-    return sessionmaker(bind=engine)
+    return sessionmaker(bind=engine, expire_on_commit=False)

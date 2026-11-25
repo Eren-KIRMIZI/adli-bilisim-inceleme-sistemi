@@ -2,7 +2,7 @@
 
 Her analiz motoru, veri katmanı, kurtarma mekanizması ve arayüz bileşeni otomatik testlere sahiptir. Testlerde gerçek kişilere ait veriler yerine kod içinde üretilen sentetik ikili (binary) ve SQLite adli örnekler kullanılır.
 
-## Test Kapsamı (`tests/` — 66 Test)
+## Test Kapsamı (`tests/` — 67 Test)
 - `test_scale_orchestrator_vol3.py`: 100.000 satırlı sayfalı `ForensicDataTable` / `ForensicTableModel`, `PluginRegistry` & `AnalysisOrchestrator` çoklu motor ingest kuyruğu, **CASE/UCO JSON-LD**, **Timesketch JSONL**, **BodyFile** dışa aktarımları, RAM tarama sınırı uyarısı ve Volatility 3 JSON köprüsü.
 - `test_audit_fixes.py`: Write-Blocker `False` varsayılanı, katı SHA-256 doğrulama ayrımı, hash zincirli append-only denetim kaydı ve arşivleme, HTML XSS & PDF XML escaping, `StatusBadge` eşleştirme, dürüst USB offline hive ayrıştırma, OLE2 Jump List MS-CFB Mini-Stream (`<4096 B`), NTFS `$SI` vs `$FN` timestomping & ADS ve Tarayıcı `visits` birleştirme/kesme uyarıları.
 - `test_case_evidence_integrity.py`: Vaka yaşam döngüsü, delil kabulü, muhafaza zinciri ve SHA-256/512 doğrulama.

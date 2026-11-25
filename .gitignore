@@ -7,6 +7,10 @@ venv/
 *.db-shm
 *.sqlite
 data/backups/
+data/certs/
+data/elevated_triage/
+data/*.db
+*_key.pem
 data/.session_active.lock
 data/session_recovery.json
 dist/

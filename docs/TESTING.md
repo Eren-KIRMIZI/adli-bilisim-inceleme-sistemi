@@ -16,7 +16,8 @@ Her analiz motoru, veri katmanı, kurtarma mekanizması ve arayüz bileşeni oto
 - `test_usb_service.py`: USBSTOR kayıtları, string ayrıştırma ve şüpheli cihaz işaretleme.
 - `test_file_browser_memory.py`: EXIF JPEG, uzantı sahteciliği, diff/duplicate, Chrome SQLite/maskeli çerezler ve `PAGEDU64`/bilinmeyen RAM davranışı.
 - `test_timeline_relations_reports.py`: Pydantic `ForensicArtifactModel`, UTC timeline/$\Delta t$, doğrulanmış/hipotez grafiği, HTML/PDF rapor üretimi.
-- `test_tokens.py`, `test_ui_components.py`, `test_pages.py`: Açık/Koyu QSS tokenları, bileşenler ve 14 sayfanın headless Qt (`QT_QPA_PLATFORM=offscreen`) entegrasyonu.
+- `test_tokens.py`, `test_ui_components.py`, `test_pages.py`: Forensic Dark Console QSS tokenları, `CircularGaugeWidget` & `SplineAreaChart` bileşenleri ve 14 sayfanın headless Qt (`QT_QPA_PLATFORM=offscreen`) entegrasyonu.
+- `scripts/verify_real_world.py` & [REAL_WORLD_VALIDATION.md](REAL_WORLD_VALIDATION.md): Gerçek Windows 11 ortamında `Get-FileHash` çapraz doğrulaması, canlı `winreg`/USBSTOR/süreç triage ve gerçek `.lnk`/OLE2 Jump List/tarayıcı ayrıştırma sonuçları.
 
 ## Çalıştırma
 ```powershell

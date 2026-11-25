@@ -4,11 +4,11 @@ from PySide6.QtWidgets import QLabel
 from PySide6.QtCore import Qt
 
 VARIANTS = {
-    "verified": {"bg": "#EDF7F2", "color": "#185E3F", "border": "#88CAA9", "icon": "✓"},
-    "warning":  {"bg": "#FEF7E6", "color": "#8A5300", "border": "#E9BE67", "icon": "⚠"},
-    "critical": {"bg": "#FEE4E2", "color": "#A61B1B", "border": "#F9A8A1", "icon": "✕"},
-    "info":     {"bg": "#EFF6FF", "color": "#1E40AF", "border": "#93C5FD", "icon": "ℹ"},
-    "neutral":  {"bg": "#F2F4F7", "color": "#1D2939", "border": "#98A2B3", "icon": "•"},
+    "verified": {"bg": "#122B22", "color": "#4ADE80", "border": "#1F513D", "icon": "✓"},
+    "warning":  {"bg": "#2E220F", "color": "#FBBF24", "border": "#78571E", "icon": "⚠"},
+    "critical": {"bg": "#34161A", "color": "#F87171", "border": "#7F2F37", "icon": "✕"},
+    "info":     {"bg": "#13283D", "color": "#38BDF8", "border": "#1E4B72", "icon": "ℹ"},
+    "neutral":  {"bg": "#1E2632", "color": "#CBD5E1", "border": "#334155", "icon": "•"},
 }
 
 

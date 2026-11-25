@@ -48,12 +48,19 @@ class BrowserForensicsEngine:
         local_app = os.environ.get("LOCALAPPDATA", "")
         roaming_app = os.environ.get("APPDATA", "")
 
-        candidates = [
-            ("Google Chrome", os.path.join(local_app, "Google", "Chrome", "User Data", "Default")),
-            ("Microsoft Edge", os.path.join(local_app, "Microsoft", "Edge", "User Data", "Default")),
+        roots = [
+            ("Google Chrome", os.path.join(local_app, "Google", "Chrome", "User Data")),
+            ("Microsoft Edge", os.path.join(local_app, "Microsoft", "Edge", "User Data")),
         ]
-        for bname, pdir in candidates:
-            if pdir and os.path.isdir(pdir):
+        for bname, root_dir in roots:
+            if not root_dir or not os.path.isdir(root_dir):
+                continue
+            for entry in sorted(os.listdir(root_dir)):
+                if entry != "Default" and not entry.startswith("Profile "):
+                    continue
+                pdir = os.path.join(root_dir, entry)
+                if not os.path.isdir(pdir):
+                    continue
                 hist = os.path.join(pdir, "History")
                 bmarks = os.path.join(pdir, "Bookmarks")
                 cookies = os.path.join(pdir, "Network", "Cookies")
@@ -62,7 +69,7 @@ class BrowserForensicsEngine:
                 if os.path.isfile(hist) or os.path.isfile(bmarks):
                     profiles.append({
                         "browser": bname,
-                        "profile": "Default",
+                        "profile": entry,
                         "path": pdir,
                         "history": hist if os.path.isfile(hist) else "",
                         "bookmarks": bmarks if os.path.isfile(bmarks) else "",

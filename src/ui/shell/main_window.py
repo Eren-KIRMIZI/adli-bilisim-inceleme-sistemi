@@ -28,7 +28,7 @@ class MainWindow(QMainWindow):
         self.db_path = db_path
         self.active_case_id = None
         self.active_evidence_id = None
-        self._current_theme = "light"
+        self._current_theme = "dark"
 
         # Power-loss & crash recovery manager
         self.recovery = RecoveryManager(data_dir=data_dir)
@@ -44,7 +44,6 @@ class MainWindow(QMainWindow):
 
         # Topbar
         self.topbar = Topbar(self)
-        self.topbar.themeToggled.connect(self.set_theme)
         self.topbar.caseSwitchRequested.connect(self._on_case_switch_clicked)
         root_layout.addWidget(self.topbar)
 
@@ -72,9 +71,8 @@ class MainWindow(QMainWindow):
         self.sidebar.pageChanged.connect(self._on_page_changed)
         self._sync_initial_context(recovered)
 
-        # Restore theme & report draft if recovered from previous session
-        restored_theme = recovered.get("theme", "light")
-        self.set_theme(restored_theme)
+        # Enforce flagship Dark Forensic theme unconditionally
+        self.set_theme("dark")
 
         if self.recovery.unclean_shutdown_detected:
             self.statusbar.set_recovery_notice(
@@ -121,7 +119,6 @@ class MainWindow(QMainWindow):
         # Global case & evidence synchronization signals
         self.cases_page.activeCaseSelected.connect(self._on_active_case_changed)
         self.evidence_page.activeEvidenceSelected.connect(self._on_active_evidence_changed)
-        self.settings_page.themeSelected.connect(self.set_theme)
 
         pages = [
             self.dashboard_page,
@@ -197,23 +194,20 @@ class MainWindow(QMainWindow):
             page.refresh_records()
         self._save_checkpoint()
 
-    def set_theme(self, theme_name: str):
-        self._current_theme = theme_name
-        qss_code = build_qss(theme_name)
+    def set_theme(self, theme_name: str = "dark"):
+        # Application runs strictly in flagship dark mode
+        self._current_theme = "dark"
+        qss_code = build_qss("dark")
         app = QApplication.instance()
         if app:
-            app.setPalette(build_palette(theme_name))
+            app.setPalette(build_palette("dark"))
             app.setStyleSheet(qss_code)
-        self.topbar.set_theme_state(theme_name)
-        self.settings_page.theme_combo.blockSignals(True)
-        self.settings_page.theme_combo.setCurrentIndex(0 if theme_name == "light" else 1)
-        self.settings_page.theme_combo.blockSignals(False)
         if hasattr(self.dashboard_page, "set_theme"):
-            self.dashboard_page.set_theme(theme_name)
+            self.dashboard_page.set_theme("dark")
         if hasattr(self.timeline_page, "set_theme"):
-            self.timeline_page.set_theme(theme_name)
+            self.timeline_page.set_theme("dark")
         if hasattr(self.relations_page, "set_theme"):
-            self.relations_page.set_theme(theme_name)
+            self.relations_page.set_theme("dark")
         self._save_checkpoint()
 
     def _save_checkpoint(self):

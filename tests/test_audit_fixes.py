@@ -100,12 +100,12 @@ def test_status_badge_no_false_green_substring(qapp):
         w = tbl.cellWidget(row, 0)
         lbl = w.layout().itemAt(0).widget()
         variants.append(lbl.styleSheet())
-    # Row 0,1,2 must NOT have verified green color (#185E3F)
-    assert "#185E3F" not in variants[0]
-    assert "#185E3F" not in variants[1]
-    assert "#185E3F" not in variants[2]
-    # Row 3 ('Doğrulandı') MUST have verified green color (#185E3F)
-    assert "#185E3F" in variants[3]
+    # Row 0,1,2 must NOT have verified green color (#4ADE80)
+    assert "#4ADE80" not in variants[0]
+    assert "#4ADE80" not in variants[1]
+    assert "#4ADE80" not in variants[2]
+    # Row 3 ('Doğrulandı') MUST have verified green color (#4ADE80)
+    assert "#4ADE80" in variants[3]
 
 
 def test_usb_offline_hive_does_not_fabricate_timestamps_or_serials(tmp_path):

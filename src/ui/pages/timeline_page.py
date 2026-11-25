@@ -16,20 +16,14 @@ from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.search_field import ForensicSearchField
 from src.ui.components.data_table import ForensicDataTable
 from src.ui.components.status_indicator import StatusBadge
+from src.ui.components.charts import SplineAreaChart
 
 
-class TimelineDensityChart(QWidget):
-    """Lightweight native Qt bar chart showing chronological event density by day."""
+class TimelineDensityChart(SplineAreaChart):
+    """Smooth Bezier spline & gradient area telemetry chart showing UTC chronological density."""
 
     def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setFixedHeight(96)
-        self._buckets: List[tuple] = []  # (label, count)
-        self._theme_name = "light"
-
-    def set_theme(self, theme_name: str):
-        self._theme_name = theme_name
-        self.update()
+        super().__init__(height=112, theme_name="dark", parent=parent)
 
     def set_events(self, events: List[Dict[str, Any]]):
         counts: Dict[str, int] = {}
@@ -38,40 +32,7 @@ class TimelineDensityChart(QWidget):
             if isinstance(ts, datetime):
                 key = ts.strftime("%m-%d %H:00")
                 counts[key] = counts.get(key, 0) + 1
-        self._buckets = sorted(counts.items())[-16:]
-        self.update()
-
-    def paintEvent(self, event):
-        t = get_theme(self._theme_name)
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        rect = self.rect()
-        painter.fillRect(rect, QColor(t["surface"]))
-
-        if not self._buckets:
-            painter.setPen(QColor(t["text_muted"]))
-            painter.drawText(rect, Qt.AlignCenter, "Zaman yoğunluğu verisi yok")
-            return
-
-        max_c = max(c for _, c in self._buckets) or 1
-        pad_x, pad_top, pad_bot = 16, 16, 22
-        avail_w = max(1, rect.width() - 2 * pad_x)
-        avail_h = max(1, rect.height() - pad_top - pad_bot)
-        bar_w = max(12, int(avail_w / len(self._buckets)) - 6)
-
-        font = QFont("Consolas", 8)
-        painter.setFont(font)
-
-        for idx, (lbl, cnt) in enumerate(self._buckets):
-            x = pad_x + idx * (avail_w / len(self._buckets))
-            h = max(4, int((cnt / max_c) * avail_h))
-            y = pad_top + (avail_h - h)
-
-            painter.fillRect(int(x), int(y), int(bar_w), int(h), QColor(t["accent"]))
-            painter.setPen(QColor(t["text"]))
-            painter.drawText(int(x), int(y) - 3, str(cnt))
-            painter.setPen(QColor(t["text_muted"]))
-            painter.drawText(int(x), rect.height() - 6, lbl[-5:])
+        self.set_series(sorted(counts.items())[-16:], accent_color="#38BDF8")
 
 
 class TimelinePage(QWidget):

@@ -48,7 +48,7 @@ class RelationsPage(QWidget):
         super().__init__(parent)
         self.svc = CorrelationService(db_path=db_path)
         self._graph_data: Dict[str, Any] = {"nodes": [], "edges": []}
-        self._theme_name = "light"
+        self._theme_name = "dark"
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(24, 18, 24, 18)

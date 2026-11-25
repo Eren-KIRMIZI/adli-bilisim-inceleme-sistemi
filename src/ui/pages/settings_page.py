@@ -1,9 +1,8 @@
 """Settings, Forensic Policy & Dependency Licenses Page."""
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QComboBox
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame
 )
-from PySide6.QtCore import Signal
 
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.data_table import ForensicDataTable
@@ -24,8 +23,6 @@ VERIFIED_DEPENDENCIES = [
 
 class SettingsPage(QWidget):
     """Application settings, forensic compliance rules, and verified license registry."""
-
-    themeSelected = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -53,14 +50,8 @@ class SettingsPage(QWidget):
         c_lay.addWidget(title)
 
         theme_row = QHBoxLayout()
-        theme_row.addWidget(QLabel("Varsayılan Görünüm Teması:"))
-        self.theme_combo = QComboBox()
-        self.theme_combo.addItems(["Açık Mod (Forensic Light)", "Koyu Mod (Forensic Dark)"])
-        self.theme_combo.setFixedWidth(240)
-        self.theme_combo.currentIndexChanged.connect(
-            lambda idx: self.themeSelected.emit("light" if idx == 0 else "dark")
-        )
-        theme_row.addWidget(self.theme_combo)
+        theme_row.addWidget(QLabel("Arayüz Görünüm Modu:"))
+        theme_row.addWidget(StatusBadge("Forensic Dark Console (Varsayılan / Sabit)", "info"))
         theme_row.addStretch()
         c_lay.addLayout(theme_row)
 

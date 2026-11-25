@@ -38,7 +38,7 @@ class RecoveryManager:
         active_case_id: Optional[int] = None,
         active_evidence_id: Optional[int] = None,
         page_index: int = 0,
-        theme: str = "light",
+        theme: str = "dark",
         report_draft: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Persist current workspace state atomically with fsync."""

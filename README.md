@@ -133,7 +133,7 @@ Kritik adli incelemeler sırasında yaşanabilecek ani elektrik kesintisi, siste
 | **11** | **Olay Zaman Çizelgesi** | `timeline_engine/` | USB, Muhafaza Zinciri, Denetim, DB `ForensicArtifact` ve `$MFT`/EVTX/Prefetch/Tarayıcı/E-posta artefaktlarını tek UTC **Super-Timeline**'da birleştirir; saatlik yoğunluk grafiği, filtreleme ve $\Delta t$ hesabı sunar. |
 | **12** | **Bulgu İlişkilendirme** | `correlation_engine/` | NetworkX + etkileşimli `QGraphicsView` ile vaka-delil-kullanıcı-USB grafiği oluşturur; kanıtlı bağlantılar ile kanıtlanmamış zamansal hipotezleri net ayırır. |
 | **13** | **Adli Rapor Oluşturucu** | `report_engine/` | Jinja2 ile **HTML** (canlı önizlemeli) ve ReportLab ile Türkçe font destekli **PDF** denetlenebilir adli inceleme raporu üretir (Çoklu Modül Artefakt/IOC bölümü dahil). |
-| **14** | **Ayarlar & Lisanslar** | `settings_page.py` | Açık/Koyu tema seçimi, adli çalışma politikası özeti ve doğrulanmış açık kaynak bağımlılık lisans tablosu (`docs/LICENSES.md`). |
+| **14** | **Ayarlar & Lisanslar** | `settings_page.py` | Forensic Dark Console görünüm politikası, adli çalışma ilkeleri ve doğrulanmış açık kaynak bağımlılık lisans tablosu (`docs/LICENSES.md`). |
 
 ---
 
@@ -161,8 +161,8 @@ adli-bilisim-inceleme-sistemi/
 │   ├── timeline_engine/            # UTC birleşik zaman çizelgesi ve Δt hesaplayıcı
 │   ├── correlation_engine/         # NetworkX bulgu ilişkilendirme motoru
 │   ├── report_engine/              # Jinja2 HTML ve ReportLab PDF rapor üreticisi
-│   └── ui/                         # PySide6 tasarım tokenları (Açık/Koyu), kabuk, bileşenler ve 14 sayfa
-└── tests/                          # Sentetik ikili örnekler ve headless Qt test paketi (43 test)
+│   └── ui/                         # PySide6 koyu konsol teması (tokens.py), kabuk, QPainter grafikler ve 14 sayfa
+└── tests/                          # Sentetik ikili örnekler, bileşenler ve headless Qt test paketi (68 test)
 ```
 
 ---
@@ -188,7 +188,9 @@ Uygulama ilk açılışta `data/forensics.db` veritabanını WAL modunda oluştu
 python -m pytest -v
 ```
 
-Test paketi sentetik MBR/NTFS/$MFT/.E01/BitLocker imajları, `$UsnJrnl:$J`, `$SI`/`$FN` timestomping & ADS, `regf` Registry kovanları (UserAssist/ShimCache/ShellBags/Amcache), yapısal `BinXml` EVTX kayıtları, `.lnk`/8-TS `.pf`/Mini-Stream Jump List/`$I` dosyaları, `TriageCollector`, YARA/HashSet, `.eml` & `.pcap`/`hosts`, EXIF JPEG'ler, Chrome `visits`+WAL SQLite veritabanları, crash dump başlıkları + Volatility 3 köprüsü, `Super-Timeline` + CASE/UCO/JSONL/BodyFile + XSS korumalı HTML/PDF raporlama, hash zincirli `AuditLog`, WAL/kurtarma senaryoları, `100k` sayfalı tablo ölçek testi ve headless PySide6 arayüz/görsel bileşenlerini kapsayan **67 otomatik test** içerir.
+Test paketi sentetik MBR/NTFS/$MFT/.E01/BitLocker imajları, `$UsnJrnl:$J`, `$SI`/`$FN` timestomping & ADS, `regf` Registry kovanları (UserAssist/ShimCache/ShellBags/Amcache), yapısal `BinXml` EVTX kayıtları, `.lnk`/8-TS `.pf`/Mini-Stream Jump List/`$I` dosyaları, `TriageCollector`, YARA/HashSet, `.eml` & `.pcap`/`hosts`, EXIF JPEG'ler, Chrome `visits`+WAL SQLite veritabanları, crash dump başlıkları + Volatility 3 köprüsü, `Super-Timeline` + CASE/UCO/JSONL/BodyFile + XSS korumalı HTML/PDF raporlama, hash zincirli `AuditLog`, WAL/kurtarma senaryoları, `100k` sayfalı tablo ölçek testi ve headless PySide6 arayüz/grafik bileşenlerini kapsayan **68 otomatik test** içerir.
+
+Gerçek bir Windows 11 iş istasyonunda salt-okunur çalıştırılan çapraz doğrulama sonuçları (`Get-FileHash`, canlı `winreg`, `USBSTOR`, gerçek `.lnk`/OLE2 Jump List, Microsoft Edge profili ve Toolhelp32 süreçleri) için: [scripts/verify_real_world.py](scripts/verify_real_world.py) ve [Gerçek Dünya Doğrulama Raporu](docs/REAL_WORLD_VALIDATION.md).
 
 ---
 
@@ -199,4 +201,5 @@ Test paketi sentetik MBR/NTFS/$MFT/.E01/BitLocker imajları, `$UsnJrnl:$J`, `$SI
 - [Veritabanı Şeması](docs/DATABASE_SCHEMA.md)
 - [Güvenlik ve Delil Bütünlüğü](docs/SECURITY.md)
 - [Test Stratejisi](docs/TESTING.md)
+- [Gerçek Dünya Doğrulama Raporu](docs/REAL_WORLD_VALIDATION.md)
 - [Bağımlılık Lisansları](docs/LICENSES.md) (Yalnızca PSF, MIT, BSD, BSD-3-Clause ve LGPL-3.0 uyumlu paketler)

@@ -143,8 +143,8 @@ def test_main_window_integration(qapp, tmp_path):
     assert isinstance(win.settings_page, SettingsPage)
     # Verify escaped ampersand in sidebar labels
     assert "&&" in win.sidebar.buttons[3].text()
-    # Verify Dark Mode switching works cleanly
-    win.set_theme("dark")
+    # Verify flagship dark-only theme enforcement
     assert win._current_theme == "dark"
     win.set_theme("light")
+    assert win._current_theme == "dark"
     win.close()

@@ -73,3 +73,26 @@ def test_brand_assets_svg_icons_and_collapsible_sidebar(qapp):
     assert sb.width() == 64
     sb.toggle_collapse()
     assert sb.width() == 235
+
+
+def test_circular_gauge_and_spline_chart(qapp):
+    """Verify QPainter circular progress ring gauge and smooth Bezier spline telemetry chart render cleanly."""
+    from datetime import datetime
+    from src.ui.components.charts import CircularGaugeWidget, SplineAreaChart
+    from src.ui.pages.timeline_page import TimelineDensityChart
+
+    gauge = CircularGaugeWidget(value=78, accent_color="#4ADE80")
+    gauge.set_value(100, "#4ADE80")
+    pix = gauge.grab()
+    assert not pix.isNull()
+
+    spline = SplineAreaChart()
+    spline.set_series([("10:00", 3), ("11:00", 8), ("12:00", 5)])
+    assert not spline.grab().isNull()
+
+    td = TimelineDensityChart()
+    td.set_events([
+        {"timestamp_utc": datetime(2026, 3, 15, 10, 15)},
+        {"timestamp_utc": datetime(2026, 3, 15, 11, 45)},
+    ])
+    assert not td.grab().isNull()

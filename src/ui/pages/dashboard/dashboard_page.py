@@ -12,7 +12,7 @@ from src.evidence_engine.evidence_service import EvidenceService
 from src.usb_engine.usb_service import UsbService
 from src.core.orchestrator import AnalysisOrchestrator
 from src.ui.workers import FunctionWorker
-from src.ui.styles.icons import get_banner_pixmap, get_brand_pixmap
+from src.ui.styles.icons import get_banner_pixmap, get_brand_pixmap, render_svg_icon
 from src.database.models import (
     init_db, AuditLog, Case, Evidence, UsbDeviceRecord, ForensicArtifact, verify_audit_chain
 )
@@ -20,17 +20,18 @@ from src.database.seed import seed_database_if_empty
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.status_indicator import StatusBadge
 from src.ui.components.data_table import ForensicDataTable
+from src.ui.components.charts import CircularGaugeWidget, SplineAreaChart
 
 
 class ForensicLabBanner(QFrame):
-    """Sleek rounded hero strip displaying the Gemini Banana lab artwork in Light/Dark theme."""
+    """Sleek rounded hero strip displaying the Gemini Banana lab artwork in Dark Console theme."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("surfaceCard")
         self.setFixedHeight(92)
-        self._theme_name = "light"
-        self._banner_pix = get_banner_pixmap("light")
+        self._theme_name = "dark"
+        self._banner_pix = get_banner_pixmap("dark")
 
         lay = QHBoxLayout(self)
         lay.setContentsMargins(18, 12, 18, 12)
@@ -47,24 +48,22 @@ class ForensicLabBanner(QFrame):
         txt_col = QVBoxLayout()
         txt_col.setSpacing(2)
         self.title_lbl = QLabel("Adli Bilişim İnceleme Laboratuvarı")
-        self.title_lbl.setStyleSheet("font-size: 16px; font-weight: 700; background: transparent;")
+        self.title_lbl.setStyleSheet("font-size: 16px; font-weight: 700; color: #F8FAFC; background: transparent;")
         self.sub_lbl = QLabel(
             "ISO/IEC 27037 • NIST SP 800-86 • SWGDE • Salt-Okunur Çevrimdışı DFIR Platformu"
         )
         self.sub_lbl.setObjectName("mutedLabel")
-        self.sub_lbl.setStyleSheet("background: transparent;")
+        self.sub_lbl.setStyleSheet("font-size: 12px; color: #CBD5E1; background: transparent;")
         txt_col.addWidget(self.title_lbl)
         txt_col.addWidget(self.sub_lbl)
         lay.addLayout(txt_col)
         lay.addStretch()
 
     def set_theme(self, theme_name: str):
-        self._theme_name = theme_name
-        self._banner_pix = get_banner_pixmap(theme_name)
-        t_col = "#F1F5F9" if theme_name == "dark" else "#1D2733"
-        s_col = "#CBD5E1" if theme_name == "dark" else "#475467"
-        self.title_lbl.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {t_col}; background: transparent;")
-        self.sub_lbl.setStyleSheet(f"font-size: 12px; color: {s_col}; background: transparent;")
+        self._theme_name = "dark"
+        self._banner_pix = get_banner_pixmap("dark")
+        self.title_lbl.setStyleSheet("font-size: 16px; font-weight: 700; color: #F8FAFC; background: transparent;")
+        self.sub_lbl.setStyleSheet("font-size: 12px; color: #CBD5E1; background: transparent;")
         self.update()
 
     def paintEvent(self, event):
@@ -98,7 +97,8 @@ class DashboardPage(QWidget):
         top_bar.addWidget(self.breadcrumb)
         top_bar.addStretch()
 
-        refresh_btn = QPushButton("🔄 Verileri Yenile")
+        refresh_btn = QPushButton(" Verileri Yenile")
+        refresh_btn.setIcon(render_svg_icon("integrity", "#CBD5E1", 15))
         refresh_btn.clicked.connect(self.refresh_data)
         top_bar.addWidget(refresh_btn)
         main_layout.addLayout(top_bar)
@@ -111,10 +111,13 @@ class DashboardPage(QWidget):
         kpi_grid = QGridLayout()
         kpi_grid.setSpacing(12)
 
-        self.card_cases = self._create_kpi_card("Toplam Vaka", "-", "Yükleniyor...", "📁")
-        self.card_evidence = self._create_kpi_card("Delil Envanteri", "-", "Yükleniyor...", "💾")
-        self.card_artifacts = self._create_kpi_card("Artefakt Analizi", "-", "Yükleniyor...", "🔌")
-        self.card_integrity = self._create_kpi_card("Bütünlük & Hash", "-", "Yükleniyor...", "🔐")
+        self.card_cases = self._create_kpi_card("Toplam Vaka", "-", "Yükleniyor...", "cases", "kpiCardAccent", "#60A5FA", "rgba(59, 130, 246, 0.14)")
+        self.card_evidence = self._create_kpi_card("Delil Envanteri", "-", "Yükleniyor...", "evidence", "kpiCardInfo", "#38BDF8", "rgba(56, 189, 248, 0.14)")
+        self.card_artifacts = self._create_kpi_card("Artefakt Analizi", "-", "Yükleniyor...", "usb", "kpiCardWarning", "#FBBF24", "rgba(251, 191, 36, 0.14)")
+        self.integrity_gauge = CircularGaugeWidget(value=0, accent_color="#4ADE80", size=58, theme_name="dark")
+        self.card_integrity = self._create_kpi_card(
+            "Bütünlük & Hash", "-", "Yükleniyor...", "integrity", "kpiCardVerified", "#4ADE80", "rgba(74, 222, 128, 0.14)", right_widget=self.integrity_gauge
+        )
 
         kpi_grid.addWidget(self.card_cases, 0, 0)
         kpi_grid.addWidget(self.card_evidence, 0, 1)
@@ -130,35 +133,40 @@ class DashboardPage(QWidget):
         act_label.setObjectName("mutedLabel")
         action_bar.addWidget(act_label)
 
-        btn_new_case = QPushButton("➕ Yeni Vaka Aç")
+        btn_new_case = QPushButton(" Yeni Vaka Aç")
+        btn_new_case.setIcon(render_svg_icon("cases", "#60A5FA", 15))
         btn_new_case.clicked.connect(lambda: self._goto_page(1))
         action_bar.addWidget(btn_new_case)
 
-        btn_add_evd = QPushButton("📥 Delil Kabul Et")
+        btn_add_evd = QPushButton(" Delil Kabul Et")
+        btn_add_evd.setIcon(render_svg_icon("evidence", "#38BDF8", 15))
         btn_add_evd.clicked.connect(lambda: self._goto_page(2))
         action_bar.addWidget(btn_add_evd)
 
-        btn_usb = QPushButton("🔌 USB Analizine Git")
+        btn_usb = QPushButton(" USB Analizine Git")
         btn_usb.setObjectName("primaryBtn")
+        btn_usb.setIcon(render_svg_icon("usb", "#FFFFFF", 15))
         btn_usb.clicked.connect(lambda: self._goto_page(6))
         action_bar.addWidget(btn_usb)
 
-        btn_report = QPushButton("📑 Adli Rapor Oluştur")
+        btn_report = QPushButton(" Adli Rapor Oluştur")
+        btn_report.setIcon(render_svg_icon("report", "#CBD5E1", 15))
         btn_report.clicked.connect(lambda: self._goto_page(12))
         action_bar.addWidget(btn_report)
 
-        btn_ingest = QPushButton("🚀 Otomatik Analiz Kuyruğu")
+        btn_ingest = QPushButton(" Otomatik Analiz Kuyruğu")
+        btn_ingest.setIcon(render_svg_icon("timeline", "#4ADE80", 15))
         btn_ingest.clicked.connect(self._open_ingest_dialog)
         action_bar.addWidget(btn_ingest)
 
         action_bar.addStretch()
         main_layout.addLayout(action_bar)
 
-        # 4. Splitter: Left Audit Trail + Right Active Case Summary
+        # 4. Splitter: Left Audit Trail & Telemetry Curve + Right Active Case Summary
         splitter = QSplitter(Qt.Horizontal)
         splitter.setChildrenCollapsible(False)
 
-        # Left: Son Adli İşlem Günlüğü (Audit Log)
+        # Left: Forensic Telemetry Curve + Son Adli İşlem Günlüğü
         left_frame = QFrame()
         left_frame.setObjectName("surfaceCard")
         left_lay = QVBoxLayout(left_frame)
@@ -166,7 +174,7 @@ class DashboardPage(QWidget):
         left_lay.setSpacing(10)
 
         l_head = QHBoxLayout()
-        l_title = QLabel("Son Adli İşlem Günlüğü (Audit Trail & Activity)")
+        l_title = QLabel("Adli İşlem Yoğunluğu & Denetim Günlüğü")
         l_title.setObjectName("sectionTitle")
         l_head.addWidget(l_title)
         l_head.addStretch()
@@ -174,9 +182,12 @@ class DashboardPage(QWidget):
         l_head.addWidget(l_badge)
         left_lay.addLayout(l_head)
 
+        self.activity_chart = SplineAreaChart(height=104, theme_name="dark", parent=self)
+        left_lay.addWidget(self.activity_chart)
+
         headers = ["Zaman (UTC)", "İşlem Türü", "Sorumlu Uzman", "Açıklama", "Bütünlük Hash"]
         self.table_audit = ForensicDataTable(headers, self)
-        left_lay.addWidget(self.table_audit)
+        left_lay.addWidget(self.table_audit, 1)
 
         splitter.addWidget(left_frame)
 
@@ -244,24 +255,40 @@ class DashboardPage(QWidget):
         # Load initial data
         self.refresh_data()
 
-    def _create_kpi_card(self, title: str, main_val: str, sub_val: str, icon: str) -> QFrame:
+    def _create_kpi_card(
+        self,
+        title: str,
+        main_val: str,
+        sub_val: str,
+        icon_key: str,
+        card_object_name: str = "surfaceCard",
+        icon_color: str = "#60A5FA",
+        icon_bg: str = "rgba(59, 130, 246, 0.14)",
+        right_widget: QWidget = None,
+    ) -> QFrame:
         card = QFrame()
-        card.setObjectName("surfaceCard")
-        card.setFixedHeight(84)
+        card.setObjectName(card_object_name)
+        card.setFixedHeight(94)
 
         layout = QHBoxLayout(card)
         layout.setContentsMargins(14, 10, 14, 10)
-        layout.setSpacing(10)
+        layout.setSpacing(12)
 
-        icon_lbl = QLabel(icon)
-        icon_lbl.setStyleSheet("font-size: 22px;")
-        layout.addWidget(icon_lbl)
+        icon_box = QLabel()
+        icon_box.setFixedSize(40, 40)
+        icon_box.setAlignment(Qt.AlignCenter)
+        icon_box.setPixmap(render_svg_icon(icon_key, icon_color, 20).pixmap(20, 20))
+        icon_box.setStyleSheet(
+            f"background-color: {icon_bg}; border-radius: 9px;"
+        )
+        layout.addWidget(icon_box)
 
         text_lay = QVBoxLayout()
         text_lay.setSpacing(2)
 
-        t_lbl = QLabel(title)
+        t_lbl = QLabel(title.upper())
         t_lbl.setObjectName("mutedLabel")
+        t_lbl.setStyleSheet("font-size: 10px; font-weight: 700; letter-spacing: 0.6px; background: transparent;")
         text_lay.addWidget(t_lbl)
 
         v_lbl = QLabel(main_val)
@@ -272,8 +299,9 @@ class DashboardPage(QWidget):
         s_lbl.setObjectName("cardSub")
         text_lay.addWidget(s_lbl)
 
-        layout.addLayout(text_lay)
-        layout.addStretch()
+        layout.addLayout(text_lay, 1)
+        if right_widget is not None:
+            layout.addWidget(right_widget)
         return card
 
     def refresh_data(self):
@@ -306,23 +334,35 @@ class DashboardPage(QWidget):
             self.card_artifacts.findChild(QLabel, "cardSub").setText(f"{susp_count} Şüpheli USB İşaretli")
 
             pct = int((verified_evds * 100) / evd_count) if evd_count else 0
-            chain_txt = "Zincir Sağlam" if audit_chk["intact"] else "⚠️ Zincir Bozuk!"
+            chain_txt = "Zincir Sağlam" if audit_chk["intact"] else "Zincir Bozuk!"
             self.card_integrity.findChild(QLabel, "cardVal").setText(f"%{pct} Doğrulandı")
             self.card_integrity.findChild(QLabel, "cardSub").setText(
                 f"{verified_evds}/{evd_count} Delil ({mismatch_evds} Uyuşmaz) | {chain_txt}"
             )
+            gauge_col = "#4ADE80" if (audit_chk["intact"] and mismatch_evds == 0) else "#F87171"
+            self.integrity_gauge.set_value(pct, gauge_col)
 
-            # Update Audit Log Table
-            logs = s.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(50).all()
+            # Update Audit Log Table & Activity Spline Chart from live DB rows
+            logs = s.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(100).all()
             records = []
+            buckets = {}
             for log in logs:
-                records.append({
-                    "Zaman (UTC)": log.timestamp.strftime("%Y-%m-%d %H:%M:%S") if log.timestamp else "-",
-                    "İşlem Türü": log.action,
-                    "Sorumlu Uzman": log.investigator,
-                    "Açıklama": log.details,
-                    "Bütünlük Hash": (log.verification_hash[:16] + "...") if log.verification_hash else "Zincirsiz"
-                })
+                if log.timestamp:
+                    b_key = log.timestamp.strftime("%m-%d %H:00")
+                    buckets[b_key] = buckets.get(b_key, 0) + 1
+                if len(records) < 50:
+                    records.append({
+                        "Zaman (UTC)": log.timestamp.strftime("%Y-%m-%d %H:%M:%S") if log.timestamp else "-",
+                        "İşlem Türü": log.action,
+                        "Sorumlu Uzman": log.investigator,
+                        "Açıklama": log.details,
+                        "Bütünlük Hash": (log.verification_hash[:16] + "...") if log.verification_hash else "Zincirsiz"
+                    })
+            self.activity_chart.set_series(
+                sorted(buckets.items())[-12:],
+                accent_color="#38BDF8",
+                empty_text="Adli denetim aktivite kaydı yok",
+            )
             self.table_audit.set_records(records)
 
     def _open_ingest_dialog(self):
@@ -343,9 +383,11 @@ class DashboardPage(QWidget):
         lay.addWidget(out_log, 1)
 
         btn_row = QHBoxLayout()
-        add_btn = QPushButton("📁 Dosya Seç & Kuyruğa Çalıştır")
+        add_btn = QPushButton(" Dosya Seç & Kuyruğa Çalıştır")
         add_btn.setObjectName("primaryBtn")
-        exp_uco = QPushButton("📤 CASE/UCO JSON-LD Dışa Aktar")
+        add_btn.setIcon(render_svg_icon("evidence", "#FFFFFF", 15))
+        exp_uco = QPushButton(" CASE/UCO JSON-LD Dışa Aktar")
+        exp_uco.setIcon(render_svg_icon("report", "#CBD5E1", 15))
         btn_row.addWidget(add_btn)
         btn_row.addWidget(exp_uco)
         btn_row.addStretch()

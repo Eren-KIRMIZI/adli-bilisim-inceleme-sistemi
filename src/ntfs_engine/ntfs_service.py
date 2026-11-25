@@ -210,6 +210,33 @@ class DiskForensicsEngine:
                 "header_bytes": head[:4096],
             }
 
+        # Direct BitLocker Volume without MBR
+        if len(head) >= 512 and head[3:11] == b"-FVE-FS-":
+            warnings.append(
+                "BitLocker şifreli birim (-FVE-FS-) tespit edildi; kurtarma anahtarı/FVEK olmadan dosya sistemi ayrıştırılamaz."
+            )
+            return {
+                "image_path": image_path,
+                "image_name": os.path.basename(image_path),
+                "image_size": image_size,
+                "format": fmt_label or "BitLocker Şifreli Birim (-FVE-FS-)",
+                "partitions": [{
+                    "index": 1,
+                    "scheme": "FVE",
+                    "type_name": "BitLocker Encrypted Volume",
+                    "bootable": False,
+                    "start_lba": 0,
+                    "start_offset": 0,
+                    "sector_count": image_size // 512,
+                    "size_bytes": image_size,
+                    "filesystem": "BitLocker (Şifreli -FVE-FS-)",
+                    "vbr_info": {"oem_id": "-FVE-FS-", "encrypted": True},
+                }],
+                "mft_records": [],
+                "warnings": warnings,
+                "header_bytes": head[:4096],
+            }
+
         # Direct NTFS Volume without MBR
         if len(head) >= 512 and head[3:11] == b"NTFS    ":
             vbr = self.parse_ntfs_vbr(head[:512], base_offset=0)
@@ -255,6 +282,12 @@ class DiskForensicsEngine:
                     )
                     self._resolve_full_paths(recs)
                     all_mft_records.extend(recs)
+                elif vbr_raw[3:11] == b"-FVE-FS-":
+                    part["filesystem"] = "BitLocker (Şifreli -FVE-FS-)"
+                    part["vbr_info"] = {"oem_id": "-FVE-FS-", "encrypted": True}
+                    warnings.append(
+                        f"Bölüm {part['index']}: BitLocker şifreli birim (-FVE-FS-) tespit edildi; FVEK / kurtarma anahtarı gereklidir."
+                    )
                 elif vbr_raw[54:62] in (b"FAT16   ", b"FAT12   ") or vbr_raw[82:90] == b"FAT32   ":
                     part["filesystem"] = "FAT"
                     part["vbr_info"] = {"oem": vbr_raw[3:11].decode("ascii", "replace").strip()}

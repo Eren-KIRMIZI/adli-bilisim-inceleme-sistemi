@@ -114,8 +114,99 @@ class TimelineService:
                         "reliability": "Yüksek (Uygulama Kaydı)",
                     })
 
+            # 4. Multi-module ForensicArtifact DB entries
+            art_q = s.query(ForensicArtifact)
+            if case_id:
+                art_q = art_q.filter(ForensicArtifact.case_id == case_id)
+            for a in art_q.all():
+                if a.normalized_timestamp:
+                    events.append({
+                        "event_type": f"Artefakt: {a.artifact_type}",
+                        "timestamp_utc": a.normalized_timestamp,
+                        "timestamp": a.normalized_timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                        "original_timestamp": a.original_timestamp or (a.normalized_timestamp.isoformat() + "Z"),
+                        "timezone_info": "UTC",
+                        "source": a.source_location or a.source_path or a.parser_name,
+                        "user": "-",
+                        "details": (a.extracted_data or "")[:200],
+                        "reliability": f"%{a.confidence} ({a.parser_name})",
+                    })
+
         events.sort(key=lambda e: e["timestamp_utc"] or datetime.min)
         return events
+
+    def ingest_mft_records(self, mft_records: List[Dict[str, Any]], source_label: str = "$MFT") -> int:
+        """Ingest NTFS $MFT $STANDARD_INFORMATION MACB timestamps into the Super-Timeline."""
+        added = 0
+        for rec in mft_records:
+            fpath = rec.get("full_path") or rec.get("filename") or "-"
+            for ts_key, ev_label in [
+                ("si_created", "MFT Oluşturulma (SI)"),
+                ("si_modified", "MFT Değiştirilme (SI)"),
+                ("si_mft_modified", "MFT Kayıt Değişimi (SI)"),
+            ]:
+                dt = rec.get(ts_key)
+                if dt:
+                    self.add(ev_label, dt, source_label, f"{fpath} (Rec #{rec.get('record_index', '?')})", reliability="Yüksek (NTFS $SI)")
+                    added += 1
+        return added
+
+    def ingest_evtx_events(self, evtx_events: List[Dict[str, Any]], source_label: str = "EVTX") -> int:
+        """Ingest parsed Windows Event Log records into the Super-Timeline."""
+        added = 0
+        for ev in evtx_events:
+            dt = ev.get("timestamp")
+            if dt:
+                eid = ev.get("event_id", "?")
+                desc = ev.get("description", "")
+                self.add(f"EVTX Event {eid}", dt, source_label, f"{desc} | {ev.get('details', '')}", reliability="Yüksek (ElfFile EVTX)")
+                added += 1
+        return added
+
+    def ingest_prefetch(self, pf_dict: Dict[str, Any], source_label: str = "Prefetch") -> int:
+        """Ingest all available execution timestamps from a parsed Prefetch (.pf) record."""
+        added = 0
+        exe = pf_dict.get("executable", "-")
+        for idx, dt in enumerate(pf_dict.get("last_run_times", [])):
+            self.add(
+                "Prefetch Çalıştırma",
+                dt,
+                pf_dict.get("filename", source_label),
+                f"{exe} (Slot #{idx + 1}, Toplam Çalışma: {pf_dict.get('run_count', '?')})",
+                reliability="Yüksek (Windows Prefetch)",
+            )
+            added += 1
+        return added
+
+    def ingest_browser_visits(self, visits: List[Dict[str, Any]], browser: str = "Tarayıcı") -> int:
+        """Ingest parsed browser URL visits into the Super-Timeline."""
+        added = 0
+        for v in visits:
+            dt = v.get("timestamp")
+            if dt:
+                self.add(
+                    f"Tarayıcı ({browser})",
+                    dt,
+                    v.get("browser", browser),
+                    f"{v.get('title', '')} — {v.get('url', '')}",
+                    reliability="Yüksek (SQLite UTC)",
+                )
+                added += 1
+        return added
+
+    def ingest_eml(self, eml_dict: Dict[str, Any]) -> int:
+        """Ingest parsed RFC 5322 Email (.eml) timestamp into the Super-Timeline."""
+        dt = eml_dict.get("date_utc")
+        if dt:
+            self.add(
+                "E-posta (.eml)",
+                dt,
+                eml_dict.get("filename", "EML"),
+                f"Kimden: {eml_dict.get('from', '-')} -> Kime: {eml_dict.get('to', '-')} | Konu: {eml_dict.get('subject', '-')}",
+                reliability="Orta-Yüksek (E-posta Başlığı)",
+            )
+            return 1
+        return 0
 
     def list(self, start: Optional[datetime] = None, end: Optional[datetime] = None, case_id: Optional[int] = None) -> List[Dict[str, Any]]:
         out = self.collect_case_timeline(case_id=case_id)

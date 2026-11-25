@@ -16,6 +16,7 @@ from src.evidence_engine.evidence_service import EvidenceService
 from src.integrity_engine.integrity_service import IntegrityService
 from src.usb_engine.usb_service import UsbService
 from src.timeline_engine.timeline_service import TimelineService
+from src.database.models import init_db, ForensicArtifact
 
 HTML_REPORT_TEMPLATE = Template("""<!DOCTYPE html>
 <html lang="tr">
@@ -127,10 +128,28 @@ HTML_REPORT_TEMPLATE = Template("""<!DOCTYPE html>
   </table>
   {% endif %}
 
-  <h2>5. Uzman Yorumu ve Değerlendirme (Objektif Bulgulardan Ayrıdır — SWGDE)</h2>
+  {% if include_artifacts and artifacts %}
+  <h2>5. Çoklu Modül Artefakt & IOC Bulguları (Disk / EVTX / Bellek / YARA / E-posta)</h2>
+  <table>
+    <thead><tr><th>Tür</th><th>Zaman (UTC)</th><th>Kaynak</th><th>Ayrıştırıcı</th><th>Ayrıntı / Bulgu</th></tr></thead>
+    <tbody>
+    {% for a in artifacts %}
+      <tr>
+        <td><strong>{{ a.artifact_type }}</strong></td>
+        <td class="mono">{{ a.timestamp }}</td>
+        <td class="mono">{{ a.source_location }}</td>
+        <td>{{ a.parser_name }} (%{{ a.confidence }})</td>
+        <td>{{ a.extracted_data }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <h2>Uzman Yorumu ve Değerlendirme (Objektif Bulgulardan Ayrıdır — SWGDE)</h2>
   <div class="box">{{ expert_notes }}</div>
 
-  <h2>6. Yöntem, Araç Doğrulama ve Analiz Sınırlamaları</h2>
+  <h2>Yöntem, Araç Doğrulama ve Analiz Sınırlamaları</h2>
   <div class="box">{{ limitations }}</div>
 
   <div class="footer">
@@ -159,6 +178,7 @@ class ReportService:
         include_custody: bool = True,
         include_usb: bool = True,
         include_timeline: bool = True,
+        include_artifacts: bool = True,
         expert_notes: str = "",
         limitations: str = "",
     ) -> Dict[str, Any]:
@@ -200,6 +220,18 @@ class ReportService:
             for u in usb_svc.list_devices(case_id=case.id)
         ]
         timeline = tl_svc.collect_case_timeline(case_id=case.id)[:60]
+        artifacts: List[Dict[str, Any]] = []
+        Session = init_db(self.db_path)
+        with Session() as s:
+            for a in s.query(ForensicArtifact).filter(ForensicArtifact.case_id == case.id).all()[:80]:
+                artifacts.append({
+                    "artifact_type": a.artifact_type,
+                    "timestamp": a.normalized_timestamp.strftime("%Y-%m-%d %H:%M:%S") if a.normalized_timestamp else (a.original_timestamp or "-"),
+                    "source_location": a.source_location or a.source_path or "-",
+                    "parser_name": a.parser_name,
+                    "confidence": a.confidence,
+                    "extracted_data": (a.extracted_data or "")[:160],
+                })
 
         default_notes = expert_notes.strip() or (
             "İnceleme kapsamında alınan dijital deliller donanımsal yazma engelleyici kullanılarak salt-okunur çalışma kopyalarına aktarılmış, "
@@ -219,10 +251,12 @@ class ReportService:
             "include_custody": include_custody,
             "include_usb": include_usb,
             "include_timeline": include_timeline,
+            "include_artifacts": include_artifacts,
             "evidences": evidences,
             "custody": custody,
             "usb_records": usbs,
             "timeline": timeline,
+            "artifacts": artifacts,
             "expert_notes": default_notes,
             "limitations": default_limits,
         }
@@ -308,10 +342,17 @@ class ReportService:
                 rows.append([t["timestamp"], t["event_type"][:24], t["user"][:18], t["details"][:48]])
             story.append(make_table(rows, [95, 110, 90, 225]))
 
-        story.append(Paragraph("4. Uzman Değerlendirme Notları", h2_style))
+        if ctx.get("include_artifacts") and ctx.get("artifacts"):
+            story.append(Paragraph("4. Çoklu Modül Artefakt & IOC Bulguları", h2_style))
+            rows = [["Tür", "Zaman (UTC)", "Kaynak", "Bulgu Özeti"]]
+            for a in ctx["artifacts"][:20]:
+                rows.append([a["artifact_type"][:22], a["timestamp"][:19], a["source_location"][:28], a["extracted_data"][:52]])
+            story.append(make_table(rows, [90, 95, 135, 200]))
+
+        story.append(Paragraph("Uzman Değerlendirme Notları", h2_style))
         story.append(Paragraph(ctx["expert_notes"].replace("\n", "<br/>"), body_style))
 
-        story.append(Paragraph("5. Analiz Sınırlamaları", h2_style))
+        story.append(Paragraph("Analiz Sınırlamaları", h2_style))
         story.append(Paragraph(ctx["limitations"].replace("\n", "<br/>"), body_style))
 
         doc.build(story)

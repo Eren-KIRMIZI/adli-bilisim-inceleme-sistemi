@@ -4,12 +4,13 @@ import os
 from typing import Dict, Any, List
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QPushButton,
-    QTabWidget, QTextEdit, QLineEdit, QSplitter, QFileDialog, QMessageBox
+    QTabWidget, QTextEdit, QLineEdit, QSplitter, QFileDialog, QMessageBox, QComboBox
 )
 from PySide6.QtCore import Qt
 
 from src.file_engine.file_service import FileAnalysisService, create_synthetic_exif_jpeg
 from src.file_engine.threat_scanner import YaraStyleScanner, HashSetService
+from src.email_network_engine import EmailForensicsService, create_synthetic_eml_file
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.data_table import ForensicDataTable
 from src.ui.components.hex_viewer import ForensicHexViewer
@@ -40,6 +41,8 @@ class FileAnalysisPage(QWidget):
         self.tabs.addTab(self._build_single_tab(), "🔍 Tekil Dosya & EXIF / İmza")
         self.tabs.addTab(self._build_diff_tab(), "⚖️ Dosya Karşılaştırma (Diff)")
         self.tabs.addTab(self._build_dup_tab(), "📂 Yinelenen Dosya & Uzantı Taraması")
+        self.tabs.addTab(self._build_threat_tab(), "🛡️ Hash Set (NSRL/IOC) & YARA")
+        self.tabs.addTab(self._build_email_tab(), "📧 E-posta (.eml) Analizi")
         main_layout.addWidget(self.tabs, 1)
 
     def _build_single_tab(self) -> QWidget:
@@ -278,3 +281,166 @@ class FileAnalysisPage(QWidget):
                 "Tam Yol": r["path"],
             })
         self.dup_table.set_records(rows)
+
+    # ------------------------------------------------------------------
+    # TAB 4: Hash Set (NSRL / IOC) & Directory YARA Scan
+    # ------------------------------------------------------------------
+    def _build_threat_tab(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(12, 12, 12, 12)
+        lay.setSpacing(10)
+
+        hs_row = QHBoxLayout()
+        self.hs_cat = QComboBox()
+        self.hs_cat.addItems(["known_bad (Kötücül IOC)", "known_good (NSRL Güvenli)"])
+        self.hs_cat.setFixedWidth(210)
+        hs_row.addWidget(self.hs_cat)
+
+        imp_btn = QPushButton("📥 SHA-256 Listesi İçe Aktar (.txt / .csv)")
+        imp_btn.clicked.connect(self._import_hash_list)
+        hs_row.addWidget(imp_btn)
+
+        self.hs_stats_lbl = QLabel()
+        self.hs_stats_lbl.setObjectName("mutedLabel")
+        self._refresh_hs_stats()
+        hs_row.addWidget(self.hs_stats_lbl, 1)
+        lay.addLayout(hs_row)
+
+        yara_row = QHBoxLayout()
+        self.yara_dir = QLineEdit()
+        self.yara_dir.setPlaceholderText("YARA-stili kurallarla taranacak klasör...")
+        yara_row.addWidget(self.yara_dir, 1)
+
+        y_pick = QPushButton("📁 Klasör Seç")
+        y_pick.clicked.connect(self._pick_yara_dir)
+        yara_row.addWidget(y_pick)
+
+        y_scan = QPushButton("🛡️ YARA Klasör Taraması Başlat")
+        y_scan.setObjectName("primaryBtn")
+        y_scan.clicked.connect(lambda: self.scan_yara_folder(self.yara_dir.text()))
+        yara_row.addWidget(y_scan)
+        lay.addLayout(yara_row)
+
+        self.yara_table = ForensicDataTable(
+            ["Önem", "Kural", "Dosya", "Offset", "Eşleşen İçerik", "Tam Yol"], self
+        )
+        lay.addWidget(self.yara_table, 1)
+        return w
+
+    def _refresh_hs_stats(self):
+        st = self.hashset_service.stats()
+        self.hs_stats_lbl.setText(
+            f"Yerel Hash Seti: {st['total']} kayıt ({st['known_bad']} Kötücül IOC | {st['known_good']} NSRL Güvenli)"
+        )
+
+    def _import_hash_list(self):
+        fp, _ = QFileDialog.getOpenFileName(self, "SHA-256 Hash Set Dosyası", "", "Hash Listeleri (*.txt *.csv);;Tüm Dosyalar (*.*)")
+        if not fp:
+            return
+        cat = "known_good" if "known_good" in self.hs_cat.currentText() else "known_bad"
+        cnt = self.hashset_service.import_hash_file(fp, category=cat)
+        self._refresh_hs_stats()
+        QMessageBox.information(self, "Hash Set İçe Aktarıldı", f"{cnt} adet SHA-256 kaydı '{cat}' olarak eklendi.")
+
+    def _pick_yara_dir(self):
+        dp = QFileDialog.getExistingDirectory(self, "YARA Taraması İçin Klasör Seç")
+        if dp:
+            self.yara_dir.setText(dp)
+            self.scan_yara_folder(dp)
+
+    def scan_yara_folder(self, folder: str):
+        folder = folder.strip()
+        if not folder or not os.path.isdir(folder):
+            QMessageBox.warning(self, "Klasör Bulunamadı", "Lütfen geçerli bir klasör yolu seçin.")
+            return
+        hits = self.yara_scanner.scan_directory(folder)
+        rows = [
+            {
+                "Önem": h["severity"],
+                "Kural": h["rule"],
+                "Dosya": h["file"],
+                "Offset": h["offset_hex"],
+                "Eşleşen İçerik": h["match_preview"],
+                "Tam Yol": h["path"],
+            }
+            for h in hits
+        ]
+        self.yara_table.set_records(rows)
+
+    # ------------------------------------------------------------------
+    # TAB 5: Email Forensics (.eml RFC 5322)
+    # ------------------------------------------------------------------
+    def _build_email_tab(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(12, 12, 12, 12)
+        lay.setSpacing(10)
+
+        top = QHBoxLayout()
+        pick_eml = QPushButton("📧 .eml Dosyası Aç")
+        pick_eml.setObjectName("primaryBtn")
+        pick_eml.clicked.connect(self._open_eml_dialog)
+        top.addWidget(pick_eml)
+
+        sample_eml = QPushButton("🧪 Sentetik Phishing .eml Yükle")
+        sample_eml.clicked.connect(self._load_synthetic_eml)
+        top.addWidget(sample_eml)
+        top.addStretch()
+        lay.addLayout(top)
+
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setChildrenCollapsible(False)
+
+        self.eml_detail = QTextEdit()
+        self.eml_detail.setReadOnly(True)
+        self.eml_detail.setStyleSheet("font-family: Consolas; font-size: 11px;")
+        splitter.addWidget(self.eml_detail)
+
+        self.eml_att_table = ForensicDataTable(
+            ["Ek Dosya", "MIME Türü", "Boyut", "İmza", "SHA-256"], self
+        )
+        splitter.addWidget(self.eml_att_table)
+        splitter.setStretchFactor(0, 6)
+        splitter.setStretchFactor(1, 4)
+        lay.addWidget(splitter, 1)
+        return w
+
+    def _open_eml_dialog(self):
+        fp, _ = QFileDialog.getOpenFileName(self, "E-posta (.eml) Seç", "", "E-posta (*.eml);;Tüm Dosyalar (*.*)")
+        if fp:
+            self.load_eml(fp)
+
+    def _load_synthetic_eml(self):
+        p = os.path.join("data", "sample_phishing.eml")
+        create_synthetic_eml_file(p)
+        self.load_eml(p)
+
+    def load_eml(self, path: str):
+        res = EmailForensicsService.parse_eml(path)
+        hops = "\n  ".join(res["received_hops"]) if res["received_hops"] else "  (Yok)"
+        auth = "\n  ".join(res["auth_results"]) if res["auth_results"] else "  (Bilgi yok)"
+        urls = "\n  ".join(res["urls"]) if res["urls"] else "  (URL bulunamadı)"
+        self.eml_detail.setPlainText(
+            f"DOSYA:       {res['filename']}\n"
+            f"KİMDEN:      {res['from']}\n"
+            f"KİME:        {res['to']}\n"
+            f"KONU:        {res['subject']}\n"
+            f"TARİH (UTC): {res['date_utc'] or res['date_raw']}\n"
+            f"MESSAGE-ID:  {res['message_id']}\n\n"
+            f"SPF / DKIM / AUTH:\n  {auth}\n\n"
+            f"RECEIVED AKTARIM ZİNCİRİ:\n  {hops}\n\n"
+            f"GÖVDE URL KALINTILARI:\n  {urls}\n\n"
+            f"İÇERİK ÖNİZLEME:\n{res['body_preview']}"
+        )
+        att_rows = [
+            {
+                "Ek Dosya": a["filename"],
+                "MIME Türü": a["content_type"],
+                "Boyut": f"{a['size']:,} B",
+                "İmza": a["signature"],
+                "SHA-256": a["sha256"],
+            }
+            for a in res["attachments"]
+        ]
+        self.eml_att_table.set_records(att_rows)

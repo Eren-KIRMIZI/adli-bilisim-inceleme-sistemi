@@ -20,7 +20,8 @@
 | 16 | **DFIR Dalga 1 (P0)**: NTFS Data Runs/parçalı MFT/tam yol, `$UsnJrnl:$J`, `BinXml` EVTX, `db` Registry/UserAssist/ShimCache | Tamamlandı |
 | 17 | **DFIR Dalga 2 (P1)**: Saf Python EnCase `.E01` EWF çözücü, 8 zamanlı Prefetch + OLE2 Jump List + ShellBags, KAPE-stili `TriageCollector` | Tamamlandı |
 | 18 | **DFIR Dalga 3 (P2)**: Bellek KDBG/`Proc` pool heuristiği + Volatility 3 algılama, yerel SQLite Hash Set (NSRL/IOC) & YARA-stili tarayıcı (52 test) | Tamamlandı |
+| 19 | **DFIR Dalga 4 (Genişletilmiş Modüller)**: BitLocker (`-FVE-FS-`), özyinelemeli `BagMRU` ShellBags + Amcache kovan çıkarımı, Super-Timeline çoklu artefakt birleştirme, çoklu modül HTML/PDF raporlama, NSRL/IOC içe aktarma & YARA klasör tarama, saf Python `.eml` (E-posta) ve `.pcap` / Hosts ağ ayrıştırıcıları (56 test) | Tamamlandı |
 
 ## İsteğe Bağlı İleri Modüller (Gelecek Eklentiler)
-- E-posta inceleme (PST/OST/EML), SRUM/Amcache derinleştirme ve tam çekirdek PDB sembol sunucusu entegrasyonu
-- Ağ analizi (PCAP / DNS geçmişi) ve BitLocker durum tespiti
+- E-posta PST/OST ikili kutusu ve SRUM (`SRUDB.dat`) ESE veritabanı ayrıştırıcısı
+- Tam çekirdek PDB sembol sunucusu (DWARF/PDB) bellek çerçeve çözümlemesi

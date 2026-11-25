@@ -2,7 +2,7 @@
 
 Her analiz motoru, veri katmanı, kurtarma mekanizması ve arayüz bileşeni otomatik testlere sahiptir. Testlerde gerçek kişilere ait veriler yerine kod içinde üretilen sentetik ikili (binary) ve SQLite adli örnekler kullanılır.
 
-## Test Kapsamı (`tests/` — 52 Test)
+## Test Kapsamı (`tests/` — 56 Test)
 - `test_case_evidence_integrity.py`: Vaka yaşam döngüsü, delil kabulü, muhafaza zinciri ve SHA-256/512 doğrulama.
 - `test_database.py`: SQLite şema oluşturma ve sentetik vaka seed doğrulaması.
 - `test_recovery.py`: SQLite WAL modu, beklenmedik elektrik kesintisi/çökme kurtarma ve `.sha256` yedek doğrulaması.
@@ -10,6 +10,7 @@ Her analiz motoru, veri katmanı, kurtarma mekanizması ve arayüz bileşeni oto
 - `test_windows_forensics.py`: Sentetik `regf` Registry Hive, `ElfFile` EVTX, `.lnk`, `.pf`, `$I` ayrıştırma ve bozuk dosya hata davranışı.
 - `test_wave1_p0.py`: NTFS `data_runs`/parçalı `$MFT`/tam yol çözümleme, `$UsnJrnl:$J` (V2/V3) & streaming carving, yapısal `BinXml` EVTX, UserAssist ROT13 & ShimCache testleri.
 - `test_wave2_wave3_p1_p2.py`: Saf Python `.E01` (EWF) sıkıştırma çözme ve uçtan uca NTFS incelemesi, 8 zamanlı Prefetch + Jump List + ShellBags, `TriageCollector` SHA-256 manifesti, bellek `Proc` pool heuristiği, `HashSetService`, `YaraStyleScanner` ve UI doğrulaması.
+- `test_wave4_dfir_extensions.py`: BitLocker `-FVE-FS-` tespiti, özyinelemeli `BagMRU` ShellBags çıkarımı, çoklu modül `Super-Timeline` & HTML/PDF raporlama, `.eml` / `.pcap` / `hosts` ayrıştırma, HashSet CSV içe aktarma ve YARA klasör tarama UI doğrulaması.
 - `test_usb_service.py`: USBSTOR kayıtları, string ayrıştırma ve şüpheli cihaz işaretleme.
 - `test_file_browser_memory.py`: EXIF JPEG, uzantı sahteciliği, diff/duplicate, Chrome SQLite/maskeli çerezler ve `PAGEDU64`/bilinmeyen RAM davranışı.
 - `test_timeline_relations_reports.py`: Pydantic `ForensicArtifactModel`, UTC timeline/$\Delta t$, doğrulanmış/hipotez grafiği, HTML/PDF rapor üretimi.

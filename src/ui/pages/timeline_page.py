@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QPushButton,
-    QComboBox, QSplitter, QTextEdit, QLineEdit, QMessageBox
+    QComboBox, QSplitter, QTextEdit, QLineEdit, QMessageBox, QFileDialog
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QColor, QFont
@@ -108,7 +108,10 @@ class TimelinePage(QWidget):
         toolbar.addWidget(self.search_field, 2)
 
         self.source_filter = QComboBox()
-        self.source_filter.addItems(["Tüm Kaynaklar", "USB", "Muhafaza", "Denetim"])
+        self.source_filter.addItems([
+            "Tüm Kaynaklar", "USB", "Muhafaza", "Denetim",
+            "MFT", "EVTX", "Prefetch", "Tarayıcı", "E-posta", "Artefakt"
+        ])
         self.source_filter.setFixedWidth(150)
         self.source_filter.currentIndexChanged.connect(self._apply_filters)
         toolbar.addWidget(self.source_filter)
@@ -117,6 +120,11 @@ class TimelinePage(QWidget):
         self.user_filter.setFixedWidth(180)
         self.user_filter.currentIndexChanged.connect(self._apply_filters)
         toolbar.addWidget(self.user_filter)
+
+        ingest_btn = QPushButton("🔀 Artefakt Ekle (Super-Timeline)")
+        ingest_btn.setToolTip("EVTX, Prefetch (.pf), veya E-posta (.eml) dosyasını zaman çizelgesine ekler.")
+        ingest_btn.clicked.connect(self._ingest_artifact_dialog)
+        toolbar.addWidget(ingest_btn)
 
         anchor_btn = QPushButton("⏱️ Referans Noktası Yap (Δt)")
         anchor_btn.setToolTip("Seçili olayı zaman farkı hesabı için referans noktası olarak işaretler.")
@@ -236,6 +244,33 @@ class TimelinePage(QWidget):
             f"KAYNAK ARTEFAKT:\n{ev['source']}\n\n"
             f"AÇIKLAMA:\n{ev['details']}"
         )
+
+    def _ingest_artifact_dialog(self):
+        fp, _ = QFileDialog.getOpenFileName(
+            self,
+            "Zaman Çizelgesine Artefakt Ekle",
+            "",
+            "Adli Artefaktlar (*.evtx *.pf *.eml);;Tüm Dosyalar (*.*)"
+        )
+        if not fp:
+            return
+        added = 0
+        low = fp.lower()
+        try:
+            if low.endswith(".evtx"):
+                from src.eventlog_engine.evtx_service import EventLogService
+                res = EventLogService().parse_evtx_file(fp)
+                added = self.svc.ingest_evtx_events(res.get("events", []), source_label=fp)
+            elif low.endswith(".pf"):
+                from src.registry_engine.windows_artifacts import WindowsArtifactParsers
+                added = self.svc.ingest_prefetch(WindowsArtifactParsers.parse_prefetch(fp))
+            elif low.endswith(".eml"):
+                from src.email_network_engine import EmailForensicsService
+                added = self.svc.ingest_eml(EmailForensicsService.parse_eml(fp))
+            self.refresh_records()
+            QMessageBox.information(self, "Super-Timeline Güncellendi", f"{added} olay UTC zaman çizelgesine eklendi.")
+        except Exception as e:
+            QMessageBox.critical(self, "Zaman Çizelgesi İçe Aktarma Hatası", str(e))
 
     def _set_anchor_event(self):
         if self._selected_dt:

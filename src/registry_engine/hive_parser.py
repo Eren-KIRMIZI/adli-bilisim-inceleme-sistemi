@@ -332,6 +332,122 @@ class RegistryHiveParser:
         walk(root)
         return results
 
+    @staticmethod
+    def extract_shellbags_from_root(root: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Recursively walk BagMRU subkeys in a parsed hive tree and decode ShellBag entries."""
+        from src.registry_engine.windows_artifacts import WindowsArtifactParsers
+
+        results: List[Dict[str, Any]] = []
+
+        def walk(node: Dict[str, Any], path_parts: List[str], in_bagmru: bool):
+            name_low = node.get("name", "").lower()
+            now_in = in_bagmru or name_low == "bagmru"
+            current_parts = list(path_parts)
+
+            if now_in:
+                child_by_name = {c.get("name", ""): c for c in node.get("children", [])}
+                for v in node.get("values", []):
+                    vname = v.get("name", "")
+                    if vname.isdigit() and v.get("raw_bytes"):
+                        parsed_sb = WindowsArtifactParsers.parse_shellbag_item(v["raw_bytes"])
+                        seg_name = parsed_sb.get("name", vname)
+                        full_sb_path = " > ".join(current_parts + [seg_name]) if current_parts else seg_name
+                        results.append({
+                            "artifact_type": "ShellBag (BagMRU)",
+                            "key_path": node.get("path", ""),
+                            "slot": vname,
+                            "folder_name": seg_name,
+                            "full_path": full_sb_path,
+                            "modified_dos": parsed_sb.get("modified_dos") or "-",
+                            "last_written": node.get("last_written"),
+                            "raw_bytes": v["raw_bytes"],
+                        })
+                        if vname in child_by_name:
+                            walk(child_by_name[vname], current_parts + [seg_name], True)
+                # Traverse remaining non-digit children
+                digit_vals = {v.get("name", "") for v in node.get("values", []) if v.get("name", "").isdigit()}
+                for ch in node.get("children", []):
+                    if ch.get("name", "") not in digit_vals:
+                        walk(ch, current_parts, True)
+                return
+
+            for ch in node.get("children", []):
+                walk(ch, [], False)
+
+        if root:
+            walk(root, [], False)
+        return results
+
+    def extract_shellbags(self, hive_path: str) -> List[Dict[str, Any]]:
+        """Parse an offline USRCLASS.DAT / NTUSER.DAT hive and extract ShellBag BagMRU entries."""
+        parsed = self.parse_hive_file(hive_path)
+        return self.extract_shellbags_from_root(parsed.get("root"))
+
+    def extract_hive_forensics_artifacts(self, parsed_hive: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extract UserAssist, ShimCache, Amcache & ShellBags from an already-parsed regf hive dict."""
+        root = parsed_hive.get("root")
+        if not root:
+            return []
+        extracted: List[Dict[str, Any]] = []
+
+        # ShellBags
+        for sb in self.extract_shellbags_from_root(root):
+            extracted.append({
+                "Durum": "Doğrulandı",
+                "Kategori": "ShellBags (BagMRU)",
+                "Ad": sb["folder_name"],
+                "Değer / Yol": f"{sb['full_path']} (DOS Mod: {sb['modified_dos']})",
+                "Zaman / Sayaç": sb["last_written"].strftime("%Y-%m-%d %H:%M") if sb.get("last_written") else sb["modified_dos"],
+                "Kaynak": sb["key_path"],
+                "_raw": sb.get("raw_bytes", b""),
+            })
+
+        def walk_special(node: Dict[str, Any]):
+            path_low = node.get("path", "").lower()
+            vals = node.get("values", [])
+            if "\\count" in path_low and "userassist" in path_low:
+                for v in vals:
+                    ua = self.parse_userassist_value(v["name"], v.get("raw_bytes", b""))
+                    extracted.append({
+                        "Durum": "İnceleniyor" if any(k in ua["decoded_path"].lower() for k in ("powershell", "cmd", "temp", "appdata")) else "Doğrulandı",
+                        "Kategori": "UserAssist (ROT13)",
+                        "Ad": ua["decoded_path"],
+                        "Değer / Yol": f"Çalıştırma: {ua['run_count']} | Odak: {ua['focus_seconds']}s",
+                        "Zaman / Sayaç": ua["last_executed"].strftime("%Y-%m-%d %H:%M") if ua.get("last_executed") else "-",
+                        "Kaynak": node.get("path", ""),
+                        "_raw": v.get("raw_bytes", b""),
+                    })
+            for v in vals:
+                if v["name"].lower() == "appcompatcache" and v.get("raw_bytes"):
+                    for sc in self.parse_shimcache(v["raw_bytes"]):
+                        extracted.append({
+                            "Durum": "Doğrulandı",
+                            "Kategori": "ShimCache (AppCompatCache)",
+                            "Ad": os.path.basename(sc["path"]) or sc["path"],
+                            "Değer / Yol": sc["path"],
+                            "Zaman / Sayaç": sc["last_modified"].strftime("%Y-%m-%d %H:%M") if sc.get("last_modified") else "-",
+                            "Kaynak": node.get("path", ""),
+                            "_raw": sc["path"].encode("utf-8", "replace"),
+                        })
+            # Amcache heuristic inside file nodes
+            val_map = {v["name"]: v["value"] for v in vals}
+            am_path = val_map.get("LowerCaseLongPath") or val_map.get("15")
+            if am_path:
+                extracted.append({
+                    "Durum": "Doğrulandı",
+                    "Kategori": "Amcache",
+                    "Ad": os.path.basename(str(am_path)) or str(am_path),
+                    "Değer / Yol": f"{am_path} | SHA1: {val_map.get('FileId') or val_map.get('101') or '-'}",
+                    "Zaman / Sayaç": node["last_written"].strftime("%Y-%m-%d %H:%M") if node.get("last_written") else "-",
+                    "Kaynak": node.get("path", ""),
+                    "_raw": str(am_path).encode("utf-8", "replace"),
+                })
+            for ch in node.get("children", []):
+                walk_special(ch)
+
+        walk_special(root)
+        return extracted
+
     def read_live_windows_triage(self) -> Dict[str, Any]:
         """Collect read-only Windows forensic artifacts from live Registry including UserAssist & ShimCache."""
         if not HAS_WINREG:

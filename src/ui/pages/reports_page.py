@@ -57,7 +57,9 @@ class ReportsPage(QWidget):
         self.chk_usb.setChecked(True)
         self.chk_tl = QCheckBox("Olay Zaman Çizelgesi (UTC)")
         self.chk_tl.setChecked(True)
-        for chk in (self.chk_evd, self.chk_cust, self.chk_usb, self.chk_tl):
+        self.chk_art = QCheckBox("Çoklu Modül Artefakt & IOC Bulguları")
+        self.chk_art.setChecked(True)
+        for chk in (self.chk_evd, self.chk_cust, self.chk_usb, self.chk_tl, self.chk_art):
             chk.toggled.connect(self.update_preview)
             c_lay.addWidget(chk)
 
@@ -122,6 +124,7 @@ class ReportsPage(QWidget):
             "include_custody": self.chk_cust.isChecked(),
             "include_usb": self.chk_usb.isChecked(),
             "include_timeline": self.chk_tl.isChecked(),
+            "include_artifacts": self.chk_art.isChecked(),
             "expert_notes": self.notes_edit.toPlainText(),
             "limitations": self.limits_edit.toPlainText(),
         }

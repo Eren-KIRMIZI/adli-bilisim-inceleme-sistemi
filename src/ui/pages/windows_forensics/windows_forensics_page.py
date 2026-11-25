@@ -13,6 +13,7 @@ from src.registry_engine.hive_parser import RegistryHiveParser, create_synthetic
 from src.registry_engine.windows_artifacts import WindowsArtifactParsers, create_synthetic_windows_artifacts
 from src.eventlog_engine.evtx_service import EventLogService, create_synthetic_evtx_file
 from src.core.triage_collector import TriageCollector
+from src.email_network_engine import NetworkForensicsService, create_synthetic_pcap_file
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.search_field import ForensicSearchField
 from src.ui.components.data_table import ForensicDataTable
@@ -49,6 +50,7 @@ class WindowsForensicsPage(QWidget):
         self.tabs.addTab(self._build_registry_tab(), "🗂️ Registry Hive Gezgini")
         self.tabs.addTab(self._build_evtx_tab(), "📜 Windows Event Logs (.evtx)")
         self.tabs.addTab(self._build_artifacts_tab(), "⚡ Çalıştırma & Dosya İzleri (.pf / .lnk / $I)")
+        self.tabs.addTab(self._build_network_tab(), "🌐 Ağ / PCAP & Hosts İzleri")
         main_layout.addWidget(self.tabs, 1)
 
     # ------------------------------------------------------------------
@@ -135,6 +137,19 @@ class WindowsForensicsPage(QWidget):
                 root_item = self._add_reg_tree_node(None, root_data)
                 self.reg_tree.expandAll()
                 self._on_reg_node_clicked(root_item, 0)
+            hive_arts = self.hive_parser.extract_hive_forensics_artifacts(parsed)
+            if hive_arts:
+                for ha in hive_arts:
+                    self._artifact_rows.insert(0, {
+                        "Durum": ha["Durum"],
+                        "Artefakt Türü": ha["Kategori"],
+                        "Ad / Dosya": ha["Ad"],
+                        "Hedef / Değer / Yol": ha["Değer / Yol"],
+                        "Zaman / Sayaç": ha["Zaman / Sayaç"],
+                        "Kaynak": ha["Kaynak"],
+                        "_raw": ha.get("_raw", b""),
+                    })
+                self._apply_artifact_filters()
         except Exception as e:
             QMessageBox.critical(self, "Registry Ayrıştırma Hatası", str(e))
 
@@ -313,7 +328,8 @@ class WindowsForensicsPage(QWidget):
         self.art_filter = QComboBox()
         self.art_filter.addItems([
             "Tüm Artefaktlar", "Başlangıç (Autorun)", "Servis", "Kullanıcı Hesabı",
-            "UserAssist", "ShimCache", "Prefetch (.pf)", "LNK Kısayolu", "Jump List", "Geri Dönüşüm Kutusu ($I)"
+            "UserAssist", "ShimCache", "ShellBags", "Amcache",
+            "Prefetch (.pf)", "LNK Kısayolu", "Jump List", "Geri Dönüşüm Kutusu ($I)"
         ])
         self.art_filter.setFixedWidth(190)
         self.art_filter.currentIndexChanged.connect(self._apply_artifact_filters)
@@ -510,3 +526,136 @@ class WindowsForensicsPage(QWidget):
             f"HEDEF / DEĞER:\n{row['Hedef / Değer / Yol']}{extra}"
         )
         self.art_hex.load_bytes(row.get("_raw", b""))
+
+    # ------------------------------------------------------------------
+    # TAB 4: Network Forensics (.pcap, Hosts & Live Sockets)
+    # ------------------------------------------------------------------
+    def _build_network_tab(self) -> QWidget:
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(12, 12, 12, 12)
+        lay.setSpacing(10)
+
+        top = QHBoxLayout()
+        open_pcap = QPushButton("📦 PCAP Dosyası Aç (.pcap)")
+        open_pcap.setObjectName("primaryBtn")
+        open_pcap.clicked.connect(self._open_pcap_dialog)
+        top.addWidget(open_pcap)
+
+        sample_pcap = QPushButton("🧪 Sentetik DNS/HTTP .pcap Yükle")
+        sample_pcap.clicked.connect(self._load_synthetic_pcap)
+        top.addWidget(sample_pcap)
+
+        live_net = QPushButton("⚡ Canlı Hosts & Soket Anlık Görüntüsü")
+        live_net.clicked.connect(self._scan_live_network)
+        top.addWidget(live_net)
+        top.addStretch()
+        lay.addLayout(top)
+
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setChildrenCollapsible(False)
+
+        self.net_table = ForensicDataTable(
+            ["Tür", "Zaman / Satır", "Kaynak", "Hedef / Alan Adı", "Bilgi / PID"], self
+        )
+        self.net_table.rowSelected.connect(self._on_net_selected)
+        splitter.addWidget(self.net_table)
+
+        right = QFrame()
+        right.setObjectName("surfaceCard")
+        right.setFixedWidth(360)
+        r_lay = QVBoxLayout(right)
+        r_lay.setContentsMargins(10, 10, 10, 10)
+        self.net_detail = QTextEdit()
+        self.net_detail.setReadOnly(True)
+        self.net_detail.setFixedHeight(190)
+        self.net_detail.setStyleSheet("font-family: Consolas; font-size: 11px;")
+        r_lay.addWidget(self.net_detail)
+        self.net_hex = ForensicHexViewer(self)
+        r_lay.addWidget(self.net_hex)
+        splitter.addWidget(right)
+        splitter.setStretchFactor(0, 7)
+        splitter.setStretchFactor(1, 3)
+        lay.addWidget(splitter, 1)
+        return w
+
+    def _open_pcap_dialog(self):
+        fp, _ = QFileDialog.getOpenFileName(self, "PCAP Yakalama Dosyası Seç", "", "PCAP (*.pcap);;Tüm Dosyalar (*.*)")
+        if fp:
+            self.load_pcap(fp)
+
+    def _load_synthetic_pcap(self):
+        p = os.path.join("data", "sample_capture.pcap")
+        create_synthetic_pcap_file(p)
+        self.load_pcap(p)
+
+    def load_pcap(self, path: str):
+        try:
+            res = NetworkForensicsService.parse_pcap(path)
+            rows: List[Dict[str, Any]] = []
+            for d in res["dns_queries"]:
+                rows.append({
+                    "Tür": "DNS Sorgusu",
+                    "Zaman / Satır": d["timestamp"],
+                    "Kaynak": d["src_ip"],
+                    "Hedef / Alan Adı": d["domain"],
+                    "Bilgi / PID": f"DNS Sunucu: {d['dst_ip']}",
+                    "_raw": d["domain"].encode("utf-8", "replace"),
+                })
+            for h in res["http_iocs"]:
+                rows.append({
+                    "Tür": "HTTP IOC",
+                    "Zaman / Satır": h["timestamp"],
+                    "Kaynak": h["src_ip"],
+                    "Hedef / Alan Adı": h["ioc"],
+                    "Bilgi / PID": f"Hedef IP: {h['dst_ip']}",
+                    "_raw": h["ioc"].encode("utf-8", "replace"),
+                })
+            for p in res["packets"]:
+                rows.append({
+                    "Tür": p["protocol"],
+                    "Zaman / Satır": p["timestamp"],
+                    "Kaynak": p["src"],
+                    "Hedef / Alan Adı": p["dst"],
+                    "Bilgi / PID": f"Paket #{p['index']} ({p['length']} B)",
+                    "_raw": p["_raw"],
+                })
+            self.net_table.set_records(rows)
+            if rows:
+                self._on_net_selected(rows[0])
+        except Exception as e:
+            QMessageBox.critical(self, "PCAP Ayrıştırma Hatası", str(e))
+
+    def _scan_live_network(self):
+        rows: List[Dict[str, Any]] = []
+        for h in NetworkForensicsService.read_hosts_file():
+            rows.append({
+                "Tür": "Hosts Kaydı",
+                "Zaman / Satır": f"Satır {h['line']}",
+                "Kaynak": h["ip"],
+                "Hedef / Alan Adı": h["domain"],
+                "Bilgi / PID": h["source"],
+                "_raw": f"{h['ip']} {h['domain']}".encode("utf-8"),
+            })
+        for c in NetworkForensicsService.capture_live_connections():
+            rows.append({
+                "Tür": f"Canlı {c['protocol']}",
+                "Zaman / Satır": c["state"],
+                "Kaynak": c["local"],
+                "Hedef / Alan Adı": c["remote"],
+                "Bilgi / PID": f"PID: {c['pid']}",
+                "_raw": f"{c['local']} -> {c['remote']}".encode("utf-8"),
+            })
+        self.net_table.set_records(rows)
+        if rows:
+            self._on_net_selected(rows[0])
+
+    def _on_net_selected(self, row: Dict[str, Any]):
+        self.net_detail.setPlainText(
+            f"TÜR:           {row['Tür']}\n"
+            f"ZAMAN / SATIR: {row['Zaman / Satır']}\n"
+            f"KAYNAK:        {row['Kaynak']}\n"
+            f"HEDEF / ALAN:  {row['Hedef / Alan Adı']}\n"
+            f"BİLGİ / PID:   {row['Bilgi / PID']}"
+        )
+        self.net_hex.load_bytes(row.get("_raw", b""))

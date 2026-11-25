@@ -6,6 +6,80 @@ Windows sistemler, disk/RAM imajları ve dijital deliller üzerinde vaka yöneti
 
 ---
 
+## Gerçek Hayatta Ne Bulur ve Nasıl Kullanılır? (Örnek Olay Senaryosu)
+
+Diyelim ki polis veya bir kurumsal olay müdahale (DFIR) uzmanı el koyulan veya teslim alınan şüpheli bir bilgisayarı inceliyor. Uzman şu temel sorulara teknik yanıt arar:
+
+- Şüpheli bilgisayarda **hangi dosyaları oluşturmuş, değiştirmiş veya silmiş**?
+- Bilgisayara **hangi USB bellekler** ne zaman bağlanmış?
+- **Hangi internet sitelerine** girilmiş, **hangi dosyalar indirilmiş**?
+- Hangi programlar çalıştırılmış, **olay günü adım adım neler yaşanmış**?
+- Silinmiş dosyalardan hangileri kurtarılabilir?
+- Başka cihazlar veya harici sunucularla (IP, URL, e-posta) bağlantı izi var mı?
+
+### Örnek İnceleme Akışı — Vaka: `VAK-2026-084`
+
+Uzman, şüpheli bilgisayarın salt-okunur disk imajını (`.E01` / `.dd`) veya toplanan çalışma kopyası paketini uygulamaya yüklediğinde modüller şu bulguları ortaya çıkarır:
+
+#### 1. Disk İncelemesi (*Bilgisayarda neler yapılmış?*)
+**Disk Forensics** modülü imajdaki MBR/GPT bölümlerini ve NTFS `$MFT` / `$UsnJrnl:$J` kayıtlarını tarayarak şunları listeler:
+- **Aktif ve Silinmiş Dosyalar:** Belgeler, arşivler, görseller ve `$MFT` üzerinde hâlâ kurtarılabilir durumdaki silinmiş kayıtlar (`Unallocated`).
+- **MACB Zaman Damgaları & Timestomping:** Oluşturma, değiştirme, erişim zamanları; ayrıca `$STANDARD_INFORMATION` ve `$FILE_NAME` zamanları arasındaki tutarsızlıklar (sahte tarih şüphesi).
+- **Gizli Akışlar & Uzantı Sahteciliği:** NTFS Alternatif Veri Akışları (ör. indirme kaynağı `Zone.Identifier`) ve uzantısı `.jpg` gösterildiği halde gerçek dosya imzası (magic-byte) çalıştırılabilir EXE olan sahte dosyalar.
+- **File Carving:** Dosya sistemi kaydı tamamen silinmiş ancak ham veri sektörlerinde kalan PDF, JPEG, ZIP veya SQLite kalıntıları.
+
+#### 2. Tarayıcı İncelemesi (*İnternette neler yapılmış?*)
+**Tarayıcı Analizi** modülü Chrome, Edge ve Firefox veritabanlarını (`?mode=ro` + `-wal`/`-shm` çalışma kopyası üzerinden) okur:
+- `10:15` — Şüpheli bulut depolama / panel adresine ziyaret
+- `10:32` — `arsiv.zip` veya çalıştırılabilir araç dosyasının indirilmesi
+- `11:05` — Arama motorunda belirli anahtar kelimelerin aranması
+- `11:40` — Silme / temizleme aracına dair sayfaların ziyareti
+
+> *Adli Not:* Tarayıcı geçmişinde bir adresin bulunması tek başına kullanıcının niyetini veya eylemi bizzat yaptığını kanıtlamaz; diğer sistem izleriyle birlikte değerlendirilir.
+
+#### 3. USB Cihaz İncelemesi (*Hangi harici bellekler takılmış?*)
+**USB Cihaz Analizi** modülü Windows Registry (`USBSTOR`, `MountedDevices`) kayıtlarından bağlanan aygıtları çıkarır:
+- Üretici, model, **VID/PID** ve donanım seri numarası,
+- Windows tarafından atanan sürücü harfi (ör. `E:`, `G:`),
+- Kayıt defteri anahtarı son yazma zamanı ve ilişkili kullanıcı hesabı / SID,
+- Seri numarası eksik veya HID enjektör (BadUSB) sınıfındaki şüpheli aygıt uyarıları.
+
+#### 4. Windows Çalıştırma İzleri & Ağ / E-posta İncelemesi
+- **Windows Forensics:** `UserAssist` (ROT13), `ShimCache`, `Amcache`, 8 çalıştırma zaman damgalı **Prefetch (`.pf`)**, `.lnk` kısayolları, **Jump List** ve `BagMRU` **ShellBags** ile hangi programların çalıştırıldığı ve hangi klasörlerin açıldığı görünür; `ElfFile`/`BinXml` EVTX motoruyla oturum açma/kapama (`4624/4625`), yeni süreç (`4688`), servis kurulumu (`7045`) ve log temizleme (`1102`) olayları incelenir.
+- **E-posta & Ağ:** `.eml` mesajlarındaki aktarım zinciri (`Received`), `SPF/DKIM` başlıkları, gövde URL'leri ve ek hash'leri; `.pcap` yakalamalarında ise DNS sorguları ve HTTP IOC izleri ayrıştırılır.
+
+#### 5. RAM Bellek İncelemesi (*Olay anında bellekte neler çalışıyordu?*)
+Elinizde bir RAM dökümü (`PAGEDU64`, `hiberfil.sys`, `.raw`) varsa:
+- Bellek içi PE/DLL başlıkları (`MZ/PE`), `KDBG` işaretçileri ve `Proc` pool adayları (açık heuristik etiketiyle),
+- Bellek içinde kalan IPv4 adresleri ve `http://` / `https://` URL kalıntıları taranabilir; sistemde kuruluysa opsiyonel **Volatility 3** (`windows.pslist`, `netscan`, `cmdline`, `malfind`) eklentileri JSON çıktısıyla köprülenir.
+
+> *Adli Not:* RAM imajı alınmamış kapalı bir sistemde geçmişte çalışıp kapanmış her program RAM üzerinden bulunamaz; bu durumlarda Prefetch, EVTX, ShimCache ve Amcache kayıtlarına başvurulur.
+
+#### 6. Olay Zaman Çizelgesi (*Tüm parçaların tek kronolojide birleşmesi*)
+**Super-Timeline** modülü tüm kaynaklardan gelen bulguları tek bir UTC zaman çizelgesinde birleştirir:
+
+| Saat (UTC — Örnek) | Olay | Kaynak Artefakt |
+|---|---|---|
+| `09:12` | Harici USB bellek bağlandı | Registry `USBSTOR` / `MountedDevices` |
+| `09:24` | Yeni dosya oluşturuldu (`export.zip`) | NTFS `$MFT` / `$UsnJrnl:$J` |
+| `09:38` | Harici web sitesine erişildi ve indirme yapıldı | Tarayıcı `History` (`visits` + `urls`) |
+| `09:41` | `powershell.exe` çalıştırıldı | Prefetch (`.pf`) & EVTX `4688` |
+| `10:05` | Kaynak belge geri dönüşüme gönderildi / silindi | `$I` Geri Dönüşüm Kutusu & `$MFT` |
+| `10:18` | USB bağlantısı kesildi | Sistem olayları / aygıt durumu |
+
+*(Yukarıdaki tablo kullanım mantığını göstermek için hazırlanmış temsili bir örnektir; gerçek incelemelerde her bulgu yalnızca doğrulanabilen ham kaynak kaydıyla raporlanır.)*
+
+#### 7. Sonuç — Denetlenebilir Adli Bilişim Raporu & Birlikte Çalışabilirlik
+Uzman inceleme sonunda vaka envanterini, SHA-256/512 doğrulama durumunu, hash zincirli muhafaza kayıtlarını, tespit edilen tüm bulguları, ilişki grafiğini (kanıt vs. hipotez ayrımıyla), uzman yorumunu ve analiz sınırlamalarını içeren **HTML / PDF** adli rapor oluşturabilir; ayrıca **CASE/UCO JSON-LD**, **Timesketch JSONL** ve **Sleuth Kit BodyFile** çıktısı alabilir.
+
+### Proje Hedefi ve Yol Haritası İlkeleri
+Bu proje Autopsy, FTK ve Magnet AXIOM ile aynı problem alanında çalışan, özgün analiz motorlarına sahip bir masaüstü DFIR platformu olarak geliştirilmektedir. Her bulgunun yalnızca *"şu dosya bulundu"* demesi yerine **hangi ham kayıttan çıktığını, ne kadar güvenilir olduğunu ve inceleme sınırlamalarını** şeffaf biçimde göstermesi hedeflenir:
+- **Çapraz Bulgu Korelasyonu:** Aynı dosyaya ait `$MFT`, Prefetch ve EVTX kayıtlarını bir arada değerlendirmek,
+- **Bağlamsal Teknik Eşleştirme:** Bulguları kanıt/suçlama iddiası sunmadan teknik sınıflandırma (ör. MITRE ATT&CK teknik bağlamı) ile ilişkilendirmek,
+- **Delil Güvenilirlik Değerlendirmesi:** Her bulguda kaynak yolunu, parser sürümünü, hash bütünlüğünü ve laboratuvar referans doğrulama sınırlarını açıkça belirtmek.
+
+---
+
 ## Temel İlkeler ve Uluslararası Standart Uyumluluğu
 
 Uygulamanın iş akışı ve veri güvenilirliği kuralları uluslararası dijital adli bilişim standartları referans alınarak tasarlanmıştır:

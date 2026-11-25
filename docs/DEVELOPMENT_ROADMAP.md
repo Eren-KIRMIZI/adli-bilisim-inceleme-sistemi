@@ -21,6 +21,7 @@
 | 17 | **DFIR Dalga 2 (P1)**: Saf Python EnCase `.E01` EWF çözücü, 8 zamanlı Prefetch + OLE2 Jump List + ShellBags, KAPE-stili `TriageCollector` | Tamamlandı |
 | 18 | **DFIR Dalga 3 (P2)**: Bellek KDBG/`Proc` pool heuristiği + Volatility 3 algılama, yerel SQLite Hash Set (NSRL/IOC) & YARA-stili tarayıcı (52 test) | Tamamlandı |
 | 19 | **DFIR Dalga 4 (Genişletilmiş Modüller)**: BitLocker (`-FVE-FS-`), özyinelemeli `BagMRU` ShellBags + Amcache kovan çıkarımı, Super-Timeline çoklu artefakt birleştirme, çoklu modül HTML/PDF raporlama, NSRL/IOC içe aktarma & YARA klasör tarama, saf Python `.eml` (E-posta) ve `.pcap` / Hosts ağ ayrıştırıcıları (56 test) | Tamamlandı |
+| 20 | **Adli Güvenilirlik, Güvenlik & Performans Sertleştirme**: Write-Blocker `False` varsayılanı, katı hash doğrulama ayrımı, hash zincirli append-only `AuditLog` + `archive_case`, Jinja2 autoescape + PDF escaping (XSS koruması), dürüst `UsbService`, `StatusBadge` tam token eşleştirme, tek geçişli streaming hash (`FileAnalysisService`), taşınabilir `mbcs` fallback, MS-CFB Mini-Stream Jump List, NTFS `$SI`/`$FN` timestomping + ADS + EWF Adler-32 sağlama, `visits` + WAL tarayıcı okuması, `QThread` arka plan çalışanları (`EvidencePage`/`DiskForensicsPage`) ve WCAG AA kontrast güncellemesi (63 test) | Tamamlandı |
 
 ## İsteğe Bağlı İleri Modüller (Gelecek Eklentiler)
 - E-posta PST/OST ikili kutusu ve SRUM (`SRUDB.dat`) ESE veritabanı ayrıştırıcısı

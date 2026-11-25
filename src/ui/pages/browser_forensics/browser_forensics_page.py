@@ -217,6 +217,9 @@ class BrowserAnalysisPage(QWidget):
                         "Oluşturulma (UTC)": c["created_utc"].strftime("%Y-%m-%d %H:%M:%S") if c["created_utc"] else "-",
                         "_source": c["source"],
                     })
+                if res.get("warnings"):
+                    self.detail_view.setPlainText("⚠️ UYARILAR:\n" + "\n".join(res["warnings"]))
+                    self.count_badge.set_status("Kayıt Sınırı Uyarısı", "warning")
             self._apply_filters()
         except Exception as e:
             QMessageBox.critical(self, "Tarayıcı Analiz Hatası", str(e))

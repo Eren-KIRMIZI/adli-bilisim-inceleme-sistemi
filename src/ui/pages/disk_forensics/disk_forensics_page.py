@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt
 from src.ntfs_engine.ntfs_service import (
     DiskForensicsEngine, create_synthetic_ntfs_image, create_synthetic_usn_journal
 )
+from src.ui.workers import FunctionWorker
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.search_field import ForensicSearchField
 from src.ui.components.data_table import ForensicDataTable
@@ -176,7 +177,28 @@ class DiskForensicsPage(QWidget):
             "Adli İmajlar (*.dd *.raw *.img *.e01 $MFT);;Tüm Dosyalar (*.*)",
         )
         if fp:
-            self.load_image(fp)
+            self.load_image_async(fp)
+
+    def load_image_async(self, path: str):
+        """Inspect large disk/E01 images in a background QThread so the UI stays responsive."""
+        self.format_badge.set_status("⏳ İmaj Çözümleniyor...", "info")
+        worker = FunctionWorker(self.engine.inspect_image, path, parent=self)
+        self._inspect_worker = worker
+
+        def on_done(ins: dict):
+            self._current_image_path = path
+            self._inspection = ins
+            self._view_mode = "mft"
+            self._carved_rows = []
+            self._populate_tree_and_table()
+
+        def on_err(err: str):
+            self.format_badge.set_status("Hata", "critical")
+            QMessageBox.critical(self, "Disk Analiz Hatası", err)
+
+        worker.finished_result.connect(on_done)
+        worker.failed.connect(on_err)
+        worker.start()
 
     def _load_synthetic_image(self):
         sample_path = os.path.join("data", "sample_ntfs_disk.dd")
@@ -389,20 +411,26 @@ class DiskForensicsPage(QWidget):
         modified = rec["modified"].strftime("%Y-%m-%d %H:%M:%S UTC") if rec["modified"] else "Eksik"
         mft_mod = rec["mft_modified"].strftime("%Y-%m-%d %H:%M:%S UTC") if rec["mft_modified"] else "Eksik"
         accessed = rec["accessed"].strftime("%Y-%m-%d %H:%M:%S UTC") if rec["accessed"] else "Eksik"
+        fn_c = rec.get("fn_created").strftime("%Y-%m-%d %H:%M:%S UTC") if rec.get("fn_created") else "-"
+        ts_flag = "⚠️ EVET (SI != FN Timestomping Şüphesi)" if rec.get("timestomping_suspect") else "Tutarlı"
+        ads_txt = ", ".join(rec.get("ads_streams", [])) or "Yok"
 
         txt = (
             f"MFT KAYIT DETAYI\n"
             f"Dosya Adı:       {rec['filename']}\n"
+            f"Tam Yol:         {rec.get('full_path', rec['filename'])}\n"
             f"MFT Kayıt No:    {rec['record_index']} (Offset 0x{rec['image_offset']:X})\n"
             f"Durum:           {'SİLİNMİŞ (Unallocated)' if rec['is_deleted'] else 'Aktif (In-Use)'}\n"
             f"Tip:             {'Dizin' if rec['is_dir'] else 'Dosya'}\n"
             f"Ebeveyn MFT Ref: {rec['parent_mft_ref']}\n"
             f"USA Fixup:       {'Geçerli' if rec['fixup_ok'] else 'Uyarı (Bozuk)'}\n"
             f"Boyut:           {rec['size']:,} bayt ({'Resident' if rec['is_resident'] else 'Non-Resident'})\n"
+            f"ADS Akışları:    {ads_txt}\n"
             f"İmza Analizi:    {rec['signature_type']} (Kesinlik: {rec['signature_confidence']})\n"
+            f"Timestomp Kont.: {ts_flag}\n"
             f"Öznitelikler:    {', '.join(rec['attributes'])}\n\n"
             f"MACB ZAMAN DAMGALARI ($STANDARD_INFORMATION):\n"
-            f"Oluşturulma (C): {created}\n"
+            f"Oluşturulma (C): {created} ($FN: {fn_c})\n"
             f"Değiştirilme(M): {modified}\n"
             f"MFT Değişim (B): {mft_mod}\n"
             f"Erişim (A):      {accessed}\n\n"

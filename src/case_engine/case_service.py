@@ -4,7 +4,10 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 import hashlib
 
-from src.database.models import init_db, Case, Evidence, UsbDeviceRecord, ForensicArtifact, AuditLog
+from src.database.models import (
+    init_db, Case, Evidence, UsbDeviceRecord, ForensicArtifact, AuditLog,
+    append_audit_log, verify_audit_chain,
+)
 from src.database.seed import seed_database_if_empty
 
 
@@ -68,14 +71,13 @@ class CaseService:
             s.add(c)
             s.flush()
 
-            vhash = hashlib.sha256(f"{c.case_number}:{c.title}:{datetime.utcnow().isoformat()}".encode()).hexdigest()[:32]
-            s.add(AuditLog(
-                case_id=c.id,
-                investigator=investigator.strip() or "Adli Bilişim Uzmanı",
-                action="Vaka Oluşturuldu",
-                details=f"{c.case_number} ({c.title}) soruşturma kaydı açıldı.",
-                verification_hash=vhash,
-            ))
+            append_audit_log(
+                s,
+                c.id,
+                investigator.strip() or "Adli Bilişim Uzmanı",
+                "Vaka Oluşturuldu",
+                f"{c.case_number} ({c.title}) soruşturma kaydı açıldı.",
+            )
             s.commit()
             s.refresh(c)
             return c
@@ -114,15 +116,40 @@ class CaseService:
                 changes.append(f"durum->{status}")
 
             if changes:
-                s.add(AuditLog(
-                    case_id=c.id,
-                    investigator=c.investigator or "Adli Bilişim Uzmanı",
-                    action="Vaka Güncellendi",
-                    details=f"{c.case_number} güncellendi ({', '.join(changes)}).",
-                ))
+                append_audit_log(
+                    s,
+                    c.id,
+                    c.investigator or "Adli Bilişim Uzmanı",
+                    "Vaka Güncellendi",
+                    f"{c.case_number} güncellendi ({', '.join(changes)}).",
+                )
             s.commit()
             s.refresh(c)
             return c
+
+    def archive_case(self, case_id: int, investigator: str = "", reason: str = "") -> Optional[Case]:
+        """Archive a forensic case instead of physically deleting evidence/custody records."""
+        with self.Session() as s:
+            c = s.query(Case).filter(Case.id == case_id).first()
+            if not c:
+                return None
+            c.status = "archived"
+            c.closed_at = c.closed_at or datetime.utcnow()
+            append_audit_log(
+                s,
+                c.id,
+                investigator or c.investigator or "Adli Bilişim Uzmanı",
+                "Vaka Arşivlendi (Korumalı)",
+                f"{c.case_number} fiziksel silme yerine arşivlendi. Neden: {reason or 'Belirtilmedi'}",
+            )
+            s.commit()
+            s.refresh(c)
+            return c
+
+    def verify_audit_integrity(self) -> Dict[str, Any]:
+        """Verify append-only hash-chain integrity across stored audit logs."""
+        with self.Session() as s:
+            return verify_audit_chain(s)
 
     def get_case_summary(self, case_id: int) -> Dict[str, Any]:
         """Return counts and related records for a specific case."""

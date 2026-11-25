@@ -2,7 +2,8 @@
 
 Her analiz motoru, veri katmanı, kurtarma mekanizması ve arayüz bileşeni otomatik testlere sahiptir. Testlerde gerçek kişilere ait veriler yerine kod içinde üretilen sentetik ikili (binary) ve SQLite adli örnekler kullanılır.
 
-## Test Kapsamı (`tests/` — 56 Test)
+## Test Kapsamı (`tests/` — 63 Test)
+- `test_audit_fixes.py`: Write-Blocker `False` varsayılanı, katı SHA-256 doğrulama ayrımı, hash zincirli append-only denetim kaydı ve arşivleme, HTML XSS & PDF XML escaping, `StatusBadge` eşleştirme, dürüst USB offline hive ayrıştırma, OLE2 Jump List MS-CFB Mini-Stream (`<4096 B`), NTFS `$SI` vs `$FN` timestomping & ADS ve Tarayıcı `visits` birleştirme/kesme uyarıları.
 - `test_case_evidence_integrity.py`: Vaka yaşam döngüsü, delil kabulü, muhafaza zinciri ve SHA-256/512 doğrulama.
 - `test_database.py`: SQLite şema oluşturma ve sentetik vaka seed doğrulaması.
 - `test_recovery.py`: SQLite WAL modu, beklenmedik elektrik kesintisi/çökme kurtarma ve `.sha256` yedek doğrulaması.

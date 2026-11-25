@@ -6,7 +6,9 @@ sensitive session/credential secrets by default per forensic privacy policy.
 
 import json
 import os
+import shutil
 import sqlite3
+import tempfile
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, parse_qs
@@ -84,14 +86,33 @@ class BrowserForensicsEngine:
                     })
         return profiles
 
-    def parse_sqlite_artifact(self, db_path: str, browser_hint: str = "Otomatik", profile_name: str = "Default") -> Dict[str, Any]:
-        """Parse a Chrome/Edge History/Cookies SQLite or Firefox places/cookies SQLite in read-only mode."""
+    def parse_sqlite_artifact(
+        self,
+        db_path: str,
+        browser_hint: str = "Otomatik",
+        profile_name: str = "Default",
+        max_rows: int = 5000,
+    ) -> Dict[str, Any]:
+        """Parse Chrome/Edge/Firefox SQLite safely using a read-only WAL/SHM-aware working copy and truncation warnings."""
         if not os.path.isfile(db_path):
             raise FileNotFoundError(f"Veritabanı bulunamadı: {db_path}")
 
-        uri = f"file:{os.path.abspath(db_path)}?mode=ro"
+        # Copy DB + optional -wal/-shm sidecars to isolated temp dir so uncheckpointed WAL frames are read cleanly
+        tmp_dir_ctx = tempfile.TemporaryDirectory(prefix="dfir_br_")
+        tmp_db = os.path.join(tmp_dir_ctx.name, os.path.basename(db_path))
+        shutil.copy2(db_path, tmp_db)
+        for suffix in ("-wal", "-shm"):
+            sidecar = db_path + suffix
+            if os.path.isfile(sidecar):
+                try:
+                    shutil.copy2(sidecar, tmp_db + suffix)
+                except Exception:
+                    pass
+
+        uri = f"file:{os.path.abspath(tmp_db)}?mode=ro"
         con = sqlite3.connect(uri, uri=True)
         cur = con.cursor()
+        warnings: List[str] = []
         try:
             tables = {r[0] for r in cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()}
             history: List[Dict[str, Any]] = []
@@ -101,13 +122,23 @@ class BrowserForensicsEngine:
             cookies: List[Dict[str, Any]] = []
             detected_browser = browser_hint
 
-            # Chromium History DB
+            # Chromium History DB (prefer per-visit join urls + visits; fallback to urls if visits empty)
             if "urls" in tables and "visits" in tables:
                 if detected_browser == "Otomatik":
                     detected_browser = "Google Chrome / Edge (Chromium)"
-                for url, title, vcount, last_vt in cur.execute(
-                    "SELECT url, title, visit_count, last_visit_time FROM urls ORDER BY last_visit_time DESC LIMIT 1000"
-                ):
+                visit_rows = cur.execute(
+                    f"SELECT u.url, u.title, u.visit_count, v.visit_time FROM visits v "
+                    f"JOIN urls u ON v.url = u.id ORDER BY v.visit_time DESC LIMIT {max_rows + 1}"
+                ).fetchall()
+                if len(visit_rows) > max_rows:
+                    warnings.append(f"⚠️ Ziyaret geçmişi {max_rows:,} kayıt sınırına ulaştı; devamı kesildi.")
+                    visit_rows = visit_rows[:max_rows]
+                if not visit_rows:
+                    visit_rows = cur.execute(
+                        f"SELECT url, title, visit_count, last_visit_time FROM urls ORDER BY last_visit_time DESC LIMIT {max_rows}"
+                    ).fetchall()
+
+                for url, title, vcount, last_vt in visit_rows:
                     ts = webkit_to_utc(last_vt)
                     history.append({
                         "browser": detected_browser,
@@ -116,7 +147,7 @@ class BrowserForensicsEngine:
                         "title": title or "-",
                         "visit_count": vcount,
                         "timestamp_utc": ts,
-                        "source": f"{os.path.basename(db_path)}::urls",
+                        "source": f"{os.path.basename(db_path)}::visits+urls",
                     })
                     q_term = self._extract_search_query(url)
                     if q_term:
@@ -130,10 +161,14 @@ class BrowserForensicsEngine:
                         })
 
             if "keyword_search_terms" in tables and "urls" in tables:
-                for term, url, last_vt in cur.execute(
-                    "SELECT k.term, u.url, u.last_visit_time FROM keyword_search_terms k "
-                    "JOIN urls u ON k.url_id = u.id ORDER BY u.last_visit_time DESC LIMIT 500"
-                ):
+                k_rows = cur.execute(
+                    f"SELECT k.term, u.url, u.last_visit_time FROM keyword_search_terms k "
+                    f"JOIN urls u ON k.url_id = u.id ORDER BY u.last_visit_time DESC LIMIT {max_rows + 1}"
+                ).fetchall()
+                if len(k_rows) > max_rows:
+                    warnings.append(f"⚠️ Arama terimleri {max_rows:,} kayıt sınırına ulaştı.")
+                    k_rows = k_rows[:max_rows]
+                for term, url, last_vt in k_rows:
                     searches.append({
                         "browser": detected_browser,
                         "profile": profile_name,
@@ -147,9 +182,13 @@ class BrowserForensicsEngine:
                 cols = {r[1] for r in cur.execute("PRAGMA table_info(downloads)").fetchall()}
                 path_col = "target_path" if "target_path" in cols else ("current_path" if "current_path" in cols else "''")
                 url_col = "tab_url" if "tab_url" in cols else "''"
-                for tpath, total_b, start_t, turl in cur.execute(
-                    f"SELECT {path_col}, total_bytes, start_time, {url_col} FROM downloads ORDER BY start_time DESC LIMIT 500"
-                ):
+                d_rows = cur.execute(
+                    f"SELECT {path_col}, total_bytes, start_time, {url_col} FROM downloads ORDER BY start_time DESC LIMIT {max_rows + 1}"
+                ).fetchall()
+                if len(d_rows) > max_rows:
+                    warnings.append(f"⚠️ İndirmeler {max_rows:,} kayıt sınırına ulaştı.")
+                    d_rows = d_rows[:max_rows]
+                for tpath, total_b, start_t, turl in d_rows:
                     downloads.append({
                         "browser": detected_browser,
                         "profile": profile_name,
@@ -163,9 +202,13 @@ class BrowserForensicsEngine:
             # Firefox places.sqlite
             if "moz_places" in tables:
                 detected_browser = "Mozilla Firefox"
-                for url, title, vcount, last_vt in cur.execute(
-                    "SELECT url, title, visit_count, last_visit_date FROM moz_places ORDER BY last_visit_date DESC LIMIT 1000"
-                ):
+                ff_rows = cur.execute(
+                    f"SELECT url, title, visit_count, last_visit_date FROM moz_places ORDER BY last_visit_date DESC LIMIT {max_rows + 1}"
+                ).fetchall()
+                if len(ff_rows) > max_rows:
+                    warnings.append(f"⚠️ Firefox geçmişi {max_rows:,} kayıt sınırına ulaştı.")
+                    ff_rows = ff_rows[:max_rows]
+                for url, title, vcount, last_vt in ff_rows:
                     ts = prtime_to_utc(last_vt)
                     history.append({
                         "browser": detected_browser,
@@ -189,8 +232,8 @@ class BrowserForensicsEngine:
 
             if "moz_bookmarks" in tables and "moz_places" in tables:
                 for btitle, url, added in cur.execute(
-                    "SELECT b.title, p.url, b.dateAdded FROM moz_bookmarks b "
-                    "JOIN moz_places p ON b.fk = p.id WHERE b.type = 1 LIMIT 500"
+                    f"SELECT b.title, p.url, b.dateAdded FROM moz_bookmarks b "
+                    f"JOIN moz_places p ON b.fk = p.id WHERE b.type = 1 LIMIT {max_rows}"
                 ):
                     bookmarks.append({
                         "browser": detected_browser,
@@ -206,7 +249,7 @@ class BrowserForensicsEngine:
                 if detected_browser == "Otomatik":
                     detected_browser = "Chromium (Cookies)"
                 for host, name, created_utc, expires_utc in cur.execute(
-                    "SELECT host_key, name, creation_utc, expires_utc FROM cookies ORDER BY creation_utc DESC LIMIT 500"
+                    f"SELECT host_key, name, creation_utc, expires_utc FROM cookies ORDER BY creation_utc DESC LIMIT {max_rows}"
                 ):
                     cookies.append({
                         "browser": detected_browser,
@@ -221,7 +264,7 @@ class BrowserForensicsEngine:
             elif "moz_cookies" in tables:
                 detected_browser = "Mozilla Firefox"
                 for host, name, ctime, expiry in cur.execute(
-                    "SELECT host, name, creationTime, expiry FROM moz_cookies ORDER BY creationTime DESC LIMIT 500"
+                    f"SELECT host, name, creationTime, expiry FROM moz_cookies ORDER BY creationTime DESC LIMIT {max_rows}"
                 ):
                     cookies.append({
                         "browser": detected_browser,
@@ -242,9 +285,11 @@ class BrowserForensicsEngine:
                 "searches": searches,
                 "bookmarks": bookmarks,
                 "cookies": cookies,
+                "warnings": warnings,
             }
         finally:
             con.close()
+            tmp_dir_ctx.cleanup()
 
     def parse_chromium_bookmarks_json(self, json_path: str, browser_name: str = "Google Chrome", profile: str = "Default") -> List[Dict[str, Any]]:
         """Parse Chromium Bookmarks JSON file read-only."""

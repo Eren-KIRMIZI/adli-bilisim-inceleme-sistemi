@@ -24,6 +24,7 @@ class EwfImageStream:
         self.bytes_per_sector = 512
         self.total_sectors = 0
         self.total_size = 0
+        self.warnings: List[str] = []
         # List of (segment_file_path, file_offset, is_compressed)
         self.chunks: List[Tuple[str, int, bool]] = []
         self._pos = 0
@@ -69,6 +70,12 @@ class EwfImageStream:
                     sec_type = sec_hdr[0:16].split(b"\x00", 1)[0].decode("ascii", "replace")
                     next_off = struct.unpack("<Q", sec_hdr[16:24])[0]
                     sec_size = struct.unpack("<Q", sec_hdr[24:32])[0]
+                    stored_adler = struct.unpack("<I", sec_hdr[72:76])[0]
+                    calc_adler = zlib.adler32(sec_hdr[:72]) & 0xFFFFFFFF
+                    if stored_adler and stored_adler != calc_adler:
+                        self.warnings.append(
+                            f"EWF bölüm ('{sec_type}') Adler-32 sağlama toplamı uyuşmazlığı @ 0x{pos:X}"
+                        )
 
                     if sec_type == "volume" and pos + 76 + 32 <= file_len:
                         vol = f.read(32)

@@ -3,7 +3,8 @@
 import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-from jinja2 import Template
+from xml.sax.saxutils import escape as xml_escape
+from jinja2 import Environment, select_autoescape
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -18,7 +19,9 @@ from src.usb_engine.usb_service import UsbService
 from src.timeline_engine.timeline_service import TimelineService
 from src.database.models import init_db, ForensicArtifact
 
-HTML_REPORT_TEMPLATE = Template("""<!DOCTYPE html>
+_JINJA_ENV = Environment(autoescape=select_autoescape(enabled_extensions=("html", "xml"), default_for_string=True, default=True))
+
+HTML_REPORT_TEMPLATE = _JINJA_ENV.from_string("""<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="utf-8">
@@ -276,15 +279,22 @@ class ReportService:
         ctx = self.build_report_context(**kwargs)
         os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
-        # Register Unicode-capable system font on Windows if available (fixes Turkish chars in PDF)
+        # Register Unicode-capable system font across Windows & Linux
         font_name = "Helvetica"
-        win_arial = r"C:\Windows\Fonts\arial.ttf"
-        if os.path.isfile(win_arial):
-            try:
-                pdfmetrics.registerFont(TTFont("ArialTR", win_arial))
-                font_name = "ArialTR"
-            except Exception:
-                pass
+        font_candidates = [
+            ("ArialTR", r"C:\Windows\Fonts\arial.ttf"),
+            ("SegoeUITR", r"C:\Windows\Fonts\segoeui.ttf"),
+            ("DejaVuTR", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"),
+            ("LiberationTR", "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"),
+        ]
+        for fname, fpath in font_candidates:
+            if os.path.isfile(fpath):
+                try:
+                    pdfmetrics.registerFont(TTFont(fname, fpath))
+                    font_name = fname
+                    break
+                except Exception:
+                    continue
 
         doc = SimpleDocTemplate(output_path, pagesize=A4, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
         styles = getSampleStyleSheet()
@@ -297,8 +307,8 @@ class ReportService:
         story.append(Paragraph("ADLİ BİLİŞİM İNCELEME RAPORU", title_style))
         story.append(Spacer(1, 8))
         story.append(Paragraph(
-            f"<b>Vaka No:</b> {c.case_number} &nbsp;|&nbsp; <b>Başlık:</b> {c.title}<br/>"
-            f"<b>Sorumlu:</b> {c.investigator or '-'} &nbsp;|&nbsp; <b>Tarih:</b> {ctx['generated_at']} &nbsp;|&nbsp; <b>Sürüm:</b> {ctx['app_version']}",
+            f"<b>Vaka No:</b> {xml_escape(str(c.case_number))} &nbsp;|&nbsp; <b>Başlık:</b> {xml_escape(str(c.title))}<br/>"
+            f"<b>Sorumlu:</b> {xml_escape(str(c.investigator or '-'))} &nbsp;|&nbsp; <b>Tarih:</b> {xml_escape(ctx['generated_at'])} &nbsp;|&nbsp; <b>Sürüm:</b> {xml_escape(ctx['app_version'])}",
             body_style,
         ))
 
@@ -350,10 +360,10 @@ class ReportService:
             story.append(make_table(rows, [90, 95, 135, 200]))
 
         story.append(Paragraph("Uzman Değerlendirme Notları", h2_style))
-        story.append(Paragraph(ctx["expert_notes"].replace("\n", "<br/>"), body_style))
+        story.append(Paragraph(xml_escape(ctx["expert_notes"]).replace("\n", "<br/>"), body_style))
 
         story.append(Paragraph("Analiz Sınırlamaları", h2_style))
-        story.append(Paragraph(ctx["limitations"].replace("\n", "<br/>"), body_style))
+        story.append(Paragraph(xml_escape(ctx["limitations"]).replace("\n", "<br/>"), body_style))
 
         doc.build(story)
         return output_path

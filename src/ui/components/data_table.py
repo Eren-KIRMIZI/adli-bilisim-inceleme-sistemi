@@ -66,15 +66,16 @@ class ForensicDataTable(QTableWidget):
 
                 if col_name.lower() in ("durum", "status", "bütünlük", "doğrulama"):
                     variant = "neutral"
-                    sval = str(val).lower()
-                    if any(k in sval for k in ["doğrulandı", "normal", "verified", "ok"]):
-                        variant = "verified"
-                    elif any(k in sval for k in ["şüpheli", "warning", "uyarı", "anomali", "silinmiş", "yinelenen"]):
-                        variant = "warning"
-                    elif any(k in sval for k in ["kritik", "bozuk", "critical", "zararlı", "uyuşmazlık", "sahte"]):
+                    sval = str(val).strip().lower()
+                    # Check negative/critical/warning phrases BEFORE positive tokens (prevents 'hash yok', 'normal dışı', 'çok şüpheli' -> green)
+                    if any(k in sval for k in ["kritik", "bozuk", "critical", "zararlı", "uyuşmazlık", "mismatch", "sahte", "kötücül"]):
                         variant = "critical"
-                    elif any(k in sval for k in ["inceleniyor", "bilgi", "info"]):
+                    elif any(k in sval for k in ["şüpheli", "warning", "uyarı", "anomali", "silinmiş", "yinelenen", "normal dışı", "doğrulanmadı", "hash yok", "yok"]):
+                        variant = "warning"
+                    elif any(k in sval for k in ["inceleniyor", "bilgi", "info", "bekliyor", "received", "kısmi"]):
                         variant = "info"
+                    elif sval in ("ok", "normal", "doğrulandı", "verified") or any(k in sval for k in ["doğrulandı", "verified", "tutarlı", "clean", "temiz"]):
+                        variant = "verified"
 
                     badge = StatusBadge(str(val), variant)
                     container = QWidget()

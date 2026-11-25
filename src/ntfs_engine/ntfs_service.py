@@ -149,13 +149,16 @@ class DiskForensicsEngine:
             try:
                 from src.ntfs_engine.ewf_reader import EwfImageStream
                 ewf = EwfImageStream(image_path)
-                return self._inspect_stream(
+                res = self._inspect_stream(
                     ewf,
                     image_path=image_path,
                     image_size=ewf.total_size,
                     fmt_label="E01 (EnCase EWF - Çözümlendi)",
                     max_mft_records=max_mft_records,
                 )
+                if ewf.warnings:
+                    res["warnings"] = list(ewf.warnings) + res.get("warnings", [])
+                return res
             except Exception as e:
                 return {
                     "image_path": image_path,
@@ -282,6 +285,11 @@ class DiskForensicsEngine:
                     )
                     self._resolve_full_paths(recs)
                     all_mft_records.extend(recs)
+                    if len(recs) >= max_mft_records:
+                        warnings.append(
+                            f"⚠️ Bölüm {part['index']}: $MFT okuma sınırı ({max_mft_records:,} kayıt) doldu; "
+                            "daha büyük hacimlerde devam eden kayıtlar kesildi."
+                        )
                 elif vbr_raw[3:11] == b"-FVE-FS-":
                     part["filesystem"] = "BitLocker (Şifreli -FVE-FS-)"
                     part["vbr_info"] = {"oem_id": "-FVE-FS-", "encrypted": True}
@@ -597,6 +605,7 @@ class DiskForensicsEngine:
                     buf[sec_end:sec_end + 2] = rep
 
         created = modified = mft_modified = accessed = None
+        fn_created = fn_modified = None
         best_filename = ""
         parent_mft_ref: Optional[int] = None
         real_size = 0
@@ -604,6 +613,7 @@ class DiskForensicsEngine:
         is_resident = False
         data_runs: List[Tuple[Optional[int], int]] = []
         attr_list: List[str] = []
+        ads_streams: List[str] = []
 
         off = first_attr_off
         while 0 < off < len(buf) - 8:
@@ -615,6 +625,7 @@ class DiskForensicsEngine:
                 break
             non_resident = buf[off + 8]
             attr_name_len = buf[off + 9]
+            attr_name_off = struct.unpack("<H", buf[off + 10:off + 12])[0]
 
             if attr_type == 0x10 and non_resident == 0:
                 attr_list.append("$STANDARD_INFORMATION")
@@ -632,6 +643,7 @@ class DiskForensicsEngine:
                 fn_base = off + c_off
                 if fn_base + 66 <= len(buf):
                     p_ref = struct.unpack("<Q", buf[fn_base:fn_base + 8])[0] & 0x0000FFFFFFFFFFFF
+                    fc_ft, fm_ft = struct.unpack("<QQ", buf[fn_base + 8:fn_base + 24])
                     fn_real_size = struct.unpack("<Q", buf[fn_base + 48:fn_base + 56])[0]
                     name_len = buf[fn_base + 64]
                     namespace = buf[fn_base + 65]
@@ -641,8 +653,17 @@ class DiskForensicsEngine:
                         if not best_filename or namespace != 2:
                             best_filename = name
                             parent_mft_ref = p_ref
+                            fn_created = filetime_to_datetime(fc_ft)
+                            fn_modified = filetime_to_datetime(fm_ft)
                             if real_size == 0 and fn_real_size > 0:
                                 real_size = fn_real_size
+
+            elif attr_type == 0x80 and attr_name_len > 0:
+                # Named Alternate Data Stream (e.g., Zone.Identifier)
+                if off + attr_name_off + attr_name_len * 2 <= off + attr_len:
+                    ads_name = bytes(buf[off + attr_name_off:off + attr_name_off + attr_name_len * 2]).decode("utf-16le", errors="replace")
+                    ads_streams.append(ads_name)
+                    attr_list.append(f"$DATA:{ads_name}")
 
             elif attr_type == 0x80 and attr_name_len == 0:
                 attr_list.append("$DATA")
@@ -663,6 +684,10 @@ class DiskForensicsEngine:
             off += attr_len
 
         sig_label, sig_conf = ("Dizin", "Yüksek") if is_dir else detect_signature(resident_data)
+        timestomp_suspect = False
+        if created and fn_created and abs((created - fn_created).total_seconds()) > 2:
+            timestomp_suspect = True
+
         return {
             "record_index": record_index,
             "image_offset": image_offset,
@@ -677,6 +702,7 @@ class DiskForensicsEngine:
             "size": real_size,
             "is_resident": is_resident,
             "data_runs": data_runs,
+            "ads_streams": ads_streams,
             "resident_data": resident_data,
             "sha256": hashlib.sha256(resident_data).hexdigest() if resident_data else "-",
             "signature_type": sig_label,
@@ -685,6 +711,9 @@ class DiskForensicsEngine:
             "modified": modified,
             "mft_modified": mft_modified,
             "accessed": accessed,
+            "fn_created": fn_created,
+            "fn_modified": fn_modified,
+            "timestomping_suspect": timestomp_suspect,
             "attributes": attr_list,
             "raw_bytes": bytes(raw_record),
         }

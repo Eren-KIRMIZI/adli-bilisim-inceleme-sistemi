@@ -3,9 +3,12 @@
 from datetime import datetime
 from typing import List, Optional, Dict, Any
 import hashlib
+import os
+import re
 
-from src.database.models import init_db, Evidence, Case, ChainOfCustodyEntry, AuditLog
+from src.database.models import init_db, Evidence, Case, ChainOfCustodyEntry, append_audit_log
 from src.database.seed import seed_database_if_empty
+from src.integrity_engine.integrity_service import IntegrityService
 
 
 class EvidenceService:
@@ -63,7 +66,7 @@ class EvidenceService:
         evidence_number: Optional[str] = None,
         capacity_bytes: Optional[int] = None,
         acquire_tool: str = "",
-        write_blocker_used: bool = True,
+        write_blocker_used: bool = False,
         sha256_hash: str = "",
         sha512_hash: str = "",
         file_path: str = "",
@@ -71,12 +74,36 @@ class EvidenceService:
         delivered_by: str = "Olay Yeri / Teslim Eden",
         status: str = "received",
     ) -> Evidence:
-        """Register a new digital evidence item and record initial custody & audit entries."""
+        """Register a new digital evidence item and verify hashes strictly against disk when available."""
         evd_num = (evidence_number or "").strip() or self.generate_evidence_number(case_id)
-        if sha256_hash and not status:
-            status = "verified"
-        elif sha256_hash and status == "received":
-            status = "verified"
+        clean_sha256 = sha256_hash.strip().lower()
+        clean_sha512 = sha512_hash.strip().lower() if sha512_hash else None
+        clean_path = file_path.strip() or None
+
+        if clean_sha256 and not re.fullmatch(r"[0-9a-f]{64}", clean_sha256):
+            raise ValueError("Geçersiz SHA-256 formatı: 64 karakterlik hexadecimal özet gereklidir.")
+        if clean_sha512 and not re.fullmatch(r"[0-9a-f]{128}", clean_sha512):
+            raise ValueError("Geçersiz SHA-512 formatı: 128 karakterlik hexadecimal özet gereklidir.")
+
+        # Strict verification rule: never trust unverified/arbitrary strings as 'verified'.
+        custody_status = "Doğrulanmadı"
+        if clean_path and os.path.isfile(clean_path):
+            computed = IntegrityService.compute_dual_hashes(clean_path)
+            if not clean_sha256:
+                clean_sha256 = computed["sha256"]
+                clean_sha512 = clean_sha512 or computed["sha512"]
+                status = "verified"
+                custody_status = "Doğrulandı"
+            elif computed["sha256"] == clean_sha256 and (not clean_sha512 or computed["sha512"] == clean_sha512):
+                status = "verified"
+                custody_status = "Doğrulandı"
+            else:
+                status = "hash_mismatch"
+                custody_status = "Uyuşmazlık"
+        else:
+            # No file on disk to independently verify hash against
+            status = status if status != "verified" else "received"
+            custody_status = "Doğrulanmadı (Dosya Yok)" if clean_sha256 else "Uyarı"
 
         with self.Session() as s:
             evd = Evidence(
@@ -90,17 +117,19 @@ class EvidenceService:
                 acquire_date=datetime.utcnow(),
                 custodian=custodian.strip(),
                 acquire_tool=acquire_tool.strip(),
-                write_blocker_used=write_blocker_used,
-                sha256_hash=sha256_hash.strip().lower(),
-                sha512_hash=sha512_hash.strip().lower() if sha512_hash else None,
+                write_blocker_used=bool(write_blocker_used),
+                sha256_hash=clean_sha256,
+                sha512_hash=clean_sha512,
                 status=status,
-                file_path=file_path.strip() or None,
+                file_path=clean_path,
                 notes=notes.strip() or None,
             )
             s.add(evd)
             s.flush()
 
-            wb_desc = acquire_tool.strip() or ("Donanımsal Yazma Engelleyici Kullanıldı" if write_blocker_used else "Yazma Engelleyici Belirtilmedi")
+            wb_desc = acquire_tool.strip() or (
+                "Donanımsal Yazma Engelleyici İşaretlendi" if write_blocker_used else "Yazma Engelleyici Belirtilmedi"
+            )
             s.add(ChainOfCustodyEntry(
                 case_id=case_id,
                 evidence_id=evd.id,
@@ -113,18 +142,17 @@ class EvidenceService:
                 write_blocker_info=wb_desc,
                 sha256_at_event=evd.sha256_hash or None,
                 sha512_at_event=evd.sha512_hash or None,
-                verification_status="Doğrulandı" if evd.sha256_hash else "Uyarı",
+                verification_status=custody_status,
                 notes=notes.strip() or "İlk delil kabul kaydı oluşturuldu.",
             ))
 
-            vhash = hashlib.sha256(f"{evd.evidence_number}:{evd.serial}:{evd.sha256_hash}".encode()).hexdigest()[:32]
-            s.add(AuditLog(
-                case_id=case_id,
-                investigator=custodian.strip() or "Adli Bilişim Uzmanı",
-                action="Delil Kabul Edildi",
-                details=f"{evd.evidence_number} ({evd.brand} {evd.model} - {evd.device_type}) envantere eklendi.",
-                verification_hash=evd.sha256_hash[:32] if evd.sha256_hash else vhash,
-            ))
+            append_audit_log(
+                s,
+                case_id,
+                custodian.strip() or "Adli Bilişim Uzmanı",
+                "Delil Kabul Edildi",
+                f"{evd.evidence_number} ({evd.brand} {evd.model} - {evd.device_type}) | Durum: {status} | WB: {bool(write_blocker_used)}",
+            )
 
             s.commit()
             s.refresh(evd)
@@ -138,12 +166,13 @@ class EvidenceService:
             evd.status = status
             if notes:
                 evd.notes = ((evd.notes + "\n") if evd.notes else "") + notes
-            s.add(AuditLog(
-                case_id=evd.case_id,
-                investigator=evd.custodian or "Adli Bilişim Uzmanı",
-                action="Delil Durumu Güncellendi",
-                details=f"{evd.evidence_number} durumu '{status}' olarak güncellendi.",
-            ))
+            append_audit_log(
+                s,
+                evd.case_id,
+                evd.custodian or "Adli Bilişim Uzmanı",
+                "Delil Durumu Güncellendi",
+                f"{evd.evidence_number} durumu '{status}' olarak güncellendi.",
+            )
             s.commit()
             s.refresh(evd)
             return evd

@@ -113,21 +113,47 @@ class FileAnalysisService:
 
     @staticmethod
     def analyze(path: str) -> Dict[str, Any]:
-        """Perform comprehensive read-only forensic inspection of a single file."""
+        """Perform single-pass streaming forensic inspection (MD5/SHA256/SHA512, entropy, magic, EXIF)."""
         if not os.path.isfile(path):
             raise FileNotFoundError(f"Dosya bulunamadı: {path}")
 
         st = os.stat(path)
-        with open(path, "rb") as f:
-            head = f.read(min(st.st_size, 1024 * 1024))
+        h_md5 = hashlib.md5()
+        h_256 = hashlib.sha256()
+        h_512 = hashlib.sha512()
+        counts = [0] * 256
+        head_chunks = bytearray()
+        total_len = 0
 
+        with open(path, "rb") as f:
+            while True:
+                chunk = f.read(262144)
+                if not chunk:
+                    break
+                h_md5.update(chunk)
+                h_256.update(chunk)
+                h_512.update(chunk)
+                if len(head_chunks) < 1024 * 1024:
+                    take = min(len(chunk), 1024 * 1024 - len(head_chunks))
+                    head_chunks.extend(chunk[:take])
+                    for b in chunk[:take]:
+                        counts[b] += 1
+                    total_len += take
+
+        head = bytes(head_chunks)
         sig_type, sig_conf = detect_signature(head)
         ext = os.path.splitext(path)[1].lower()
         ext_mismatch = FileAnalysisService._check_extension_mismatch(ext, sig_type)
 
-        hashes = IntegrityService.compute_dual_hashes(path)
-        md5_val = hashlib.md5(head if st.st_size <= 1024 * 1024 else open(path, "rb").read()).hexdigest()
-        entropy = FileAnalysisService.shannon_entropy(head)
+        if total_len > 0:
+            ent = 0.0
+            for c in counts:
+                if c:
+                    p = c / total_len
+                    ent -= p * math.log2(p)
+            entropy = round(ent, 4)
+        else:
+            entropy = 0.0
         exif = FileAnalysisService.extract_jpeg_exif(head) if head.startswith(b"\xFF\xD8") else {}
 
         return {
@@ -141,9 +167,9 @@ class FileAnalysisService:
             "extension_mismatch": ext_mismatch,
             "entropy": entropy,
             "entropy_note": "Yüksek entropi (Şifreli/Sıkıştırılmış olabilir)" if entropy >= 7.2 else "Normal",
-            "sha256": hashes["sha256"],
-            "sha512": hashes["sha512"],
-            "md5": md5_val,
+            "sha256": h_256.hexdigest(),
+            "sha512": h_512.hexdigest(),
+            "md5": h_md5.hexdigest(),
             "created_utc": datetime.fromtimestamp(st.st_ctime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
             "modified_utc": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
             "accessed_utc": datetime.fromtimestamp(st.st_atime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),

@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-from src.database.models import init_db, UsbDeviceRecord, Case, AuditLog
+from src.database.models import init_db, UsbDeviceRecord, Case, append_audit_log
 from src.database.seed import seed_database_if_empty
 
 # Try to import winreg on Windows
@@ -80,6 +80,8 @@ class UsbService:
 
                                     friendly_name = details.get("FriendlyName", f"{vendor} {product}")
                                     drive_letter = mounted_map.get(serial_name.split("&")[0], None)
+                                    vid_m = re.search(r"VID_([0-9A-Fa-f]{4})", str(details.get("HardwareID", "")) + str(details.get("ContainerID", "")))
+                                    pid_m = re.search(r"PID_([0-9A-Fa-f]{4})", str(details.get("HardwareID", "")))
 
                                     rec = UsbDeviceRecord(
                                         case_id=case_id,
@@ -87,18 +89,18 @@ class UsbService:
                                         vendor=vendor,
                                         product=product,
                                         revision=rev,
-                                        vid="LIVE_SYS",
-                                        pid="LIVE_SYS",
+                                        vid=vid_m.group(1).upper() if vid_m else None,
+                                        pid=pid_m.group(1).upper() if pid_m else None,
                                         serial_number=serial_name,
                                         drive_letter=drive_letter,
-                                        first_connected=datetime.utcnow(),
-                                        last_connected=datetime.utcnow(),
+                                        first_connected=None,  # winreg canlı taraması alt anahtar FILETIME zamanını döndürmez; uydurulmaz
+                                        last_connected=None,
                                         registry_source_key=instance_path,
                                         device_class="USBSTOR",
-                                        status="Normal",
-                                        confidence=100,
+                                        status="İnceleniyor",
+                                        confidence=85,
                                         is_suspicious=False,
-                                        notes="Canlı sistem Windows Registry (USBSTOR) üzerinden salt-okunur ayrıştırıldı.",
+                                        notes="Canlı Windows Registry (USBSTOR) üzerinden salt-okunur okundu. Zaman damgaları çevrimdışı SYSTEM kovanından çıkarılmalıdır.",
                                         raw_details=json.dumps(details, default=str)
                                     )
                                     extracted_records.append(rec)
@@ -109,18 +111,20 @@ class UsbService:
         except Exception:
             pass
 
-        # Save to database
+        # Save to database with hash-chained AuditLog
         if extracted_records:
             with self.Session() as s:
                 s.add_all(extracted_records)
-                audit = AuditLog(
-                    case_id=case_id,
-                    investigator="Canlı Analiz Motoru",
-                    action="Canlı USB Taraması Tamamlandı",
-                    details=f"Canlı sistemden {len(extracted_records)} adet USBSTOR kaydı başarıyla çıkarıldı."
+                append_audit_log(
+                    s,
+                    case_id,
+                    "Canlı Analiz Motoru",
+                    "Canlı USB Taraması Tamamlandı",
+                    f"Canlı sistemden {len(extracted_records)} adet USBSTOR kaydı salt-okunur çıkarıldı.",
                 )
-                s.add(audit)
                 s.commit()
+                for rec in extracted_records:
+                    s.refresh(rec)
 
         return extracted_records
 
@@ -163,17 +167,57 @@ class UsbService:
         return vendor, product, rev
 
     def parse_offline_hive(self, hive_path: str, case_id: int = 1) -> List[UsbDeviceRecord]:
-        """Read and parse offline SYSTEM registry hive file for USB artifacts."""
+        """Read and parse offline SYSTEM registry hive via regf parser (falling back honestly without fabricating metadata)."""
         extracted: List[UsbDeviceRecord] = []
         if not os.path.exists(hive_path):
             return extracted
 
-        # Forensic string extraction for offline binary hive
+        # 1. Preferred path: Structural regf parsing via RegistryHiveParser (extracts real key timestamps & serials)
         try:
-            with open(hive_path, "rb") as f:
-                data = f.read()
+            from src.registry_engine.hive_parser import RegistryHiveParser
+            parsed = RegistryHiveParser().parse_hive_file(hive_path)
+            root = parsed.get("root")
 
-            # Find USBSTOR matches
+            def walk_usbstor(node: Dict[str, Any]):
+                npath = node.get("path", "")
+                nname = node.get("name", "")
+                if "usbstor" in npath.lower() and "Ven_" in nname and "Prod_" in nname:
+                    ven, prod, rev = self._parse_usbstor_device_string(nname)
+                    for inst in node.get("children", []):
+                        vals = {v["name"]: v["value"] for v in inst.get("values", [])}
+                        fname = vals.get("FriendlyName") or f"{ven} {prod}"
+                        extracted.append(UsbDeviceRecord(
+                            case_id=case_id,
+                            device_name=str(fname),
+                            vendor=ven,
+                            product=prod,
+                            revision=rev or None,
+                            vid=None,
+                            pid=None,
+                            serial_number=inst.get("name") or None,
+                            drive_letter=None,  # MountedDevices eşleşmesi ayrı kanıt gerektirir
+                            first_connected=None,
+                            last_connected=inst.get("last_written"),
+                            registry_source_key=inst.get("path", npath),
+                            device_class="USBSTOR",
+                            status="İnceleniyor",
+                            confidence=90,
+                            is_suspicious=False,
+                            notes=f"Çevrimdışı regf kovanı ({os.path.basename(hive_path)}) içinden ayrıştırıldı.",
+                        ))
+                for ch in node.get("children", []):
+                    walk_usbstor(ch)
+
+            if root:
+                walk_usbstor(root)
+        except Exception:
+            extracted = []
+
+        # 2. Fallback: raw string discovery when hive is unindexed/partial (never fabricate serial/drive/timestamp)
+        if not extracted:
+            with open(hive_path, "rb") as f:
+                data = f.read(min(os.path.getsize(hive_path), 64 * 1024 * 1024))
+
             matches = re.findall(rb"Disk&Ven_([a-zA-Z0-9_\-\.]+)&Prod_([a-zA-Z0-9_\-\.]+)", data)
             seen = set()
             for m in matches:
@@ -184,33 +228,42 @@ class UsbService:
                     continue
                 seen.add(key)
 
-                rec = UsbDeviceRecord(
+                extracted.append(UsbDeviceRecord(
                     case_id=case_id,
                     device_name=f"{ven} {prod}",
                     vendor=ven,
                     product=prod,
-                    revision="Offline",
-                    vid="OFFLINE",
-                    pid="OFFLINE",
-                    serial_number=f"OFFLINE_{len(seen):04d}",
-                    drive_letter="E:",
-                    first_connected=datetime.utcnow(),
-                    last_connected=datetime.utcnow(),
-                    registry_source_key=f"HIVE_FILE\\{os.path.basename(hive_path)}\\USBSTOR",
+                    revision=None,
+                    vid=None,
+                    pid=None,
+                    serial_number=None,
+                    drive_letter=None,
+                    first_connected=None,
+                    last_connected=None,
+                    registry_source_key=f"HIVE_RAW\\{os.path.basename(hive_path)}\\USBSTOR",
                     device_class="USBSTOR",
-                    status="Doğrulandı",
-                    confidence=90,
+                    status="Kısmi (Ham Dize)",
+                    confidence=45,
                     is_suspicious=False,
-                    notes=f"Çevrimdışı Registry Kovanı ({os.path.basename(hive_path)}) üzerinden adli olarak çıkarıldı."
-                )
-                extracted.append(rec)
+                    notes=(
+                        f"Uyarı: {os.path.basename(hive_path)} tam regf ağacı olarak çözülemedi; "
+                        "yalnızca ham baytlardan USBSTOR üretici/model dizesi çıkarıldı (seri/sürücü/zaman bilinmiyor)."
+                    ),
+                ))
 
-            if extracted:
-                with self.Session() as s:
-                    s.add_all(extracted)
-                    s.commit()
-        except Exception:
-            pass
+        if extracted:
+            with self.Session() as s:
+                s.add_all(extracted)
+                append_audit_log(
+                    s,
+                    case_id,
+                    "USB Analiz Motoru",
+                    "Çevrimdışı Hive USB Analizi",
+                    f"{os.path.basename(hive_path)} içinden {len(extracted)} USB kaydı çıkarıldı.",
+                )
+                s.commit()
+                for rec in extracted:
+                    s.refresh(rec)
 
         return extracted
 

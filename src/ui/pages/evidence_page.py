@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt, Signal
 from src.evidence_engine.evidence_service import EvidenceService
 from src.case_engine.case_service import CaseService
 from src.integrity_engine.integrity_service import IntegrityService
+from src.ui.workers import HashWorker, FunctionWorker
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.search_field import ForensicSearchField
 from src.ui.components.data_table import ForensicDataTable
@@ -284,24 +285,40 @@ class EvidencePage(QWidget):
                 "Bu delil için disk üzerinde erişilebilir bir imaj dosyası yolu kayıtlı değil. Doğrulamak için Bütünlük & Hash modülünden dosya seçebilirsiniz.",
             )
             return
-        res = self.integrity_svc.verify_detailed(evd.file_path, evd.sha256_hash or "")
-        status = "Doğrulandı" if res["matched"] else "Uyuşmazlık"
-        self.integrity_svc.add_custody_entry(
-            evd.case_id,
-            evd.id,
-            "Bütünlük Doğrulama",
-            "Çalışma Kopyası",
-            evd.custodian or "Adli Bilişim Uzmanı",
-            location="Analiz İstasyonu",
-            acquire_method="Otomatik Hash Karşılaştırma",
-            write_blocker_info="Salt Okunur Okuma",
-            sha256_at_event=res["sha256"],
-            sha512_at_event=res["sha512"],
-            verification_status=status,
-            notes=f"SHA-256 doğrulama sonucu: {status}",
-        )
-        self.refresh_records()
-        QMessageBox.information(self, "Bütünlük Sonucu", f"SHA-256 Doğrulama Durumu: {status}\nHesaplanan: {res['sha256']}")
+        self.verify_disk_btn.setEnabled(False)
+        self.verify_disk_btn.setText("⏳ Doğrulanıyor (Arka Plan)...")
+        worker = FunctionWorker(self.integrity_svc.verify_detailed, evd.file_path, evd.sha256_hash or "", parent=self)
+        self._verify_worker = worker
+
+        def on_done(res: dict):
+            self.verify_disk_btn.setEnabled(True)
+            self.verify_disk_btn.setText("🔐 Diskteki Dosyayı Doğrula")
+            status = "Doğrulandı" if res["matched"] else "Uyuşmazlık"
+            self.integrity_svc.add_custody_entry(
+                evd.case_id,
+                evd.id,
+                "Bütünlük Doğrulama",
+                "Çalışma Kopyası",
+                evd.custodian or "Adli Bilişim Uzmanı",
+                location="Analiz İstasyonu",
+                acquire_method="Otomatik Hash Karşılaştırma",
+                write_blocker_info="Salt Okunur Okuma",
+                sha256_at_event=res["sha256"],
+                sha512_at_event=res["sha512"],
+                verification_status=status,
+                notes=f"SHA-256 doğrulama sonucu: {status}",
+            )
+            self.refresh_records()
+            QMessageBox.information(self, "Bütünlük Sonucu", f"SHA-256 Doğrulama Durumu: {status}\nHesaplanan: {res['sha256']}")
+
+        def on_err(err: str):
+            self.verify_disk_btn.setEnabled(True)
+            self.verify_disk_btn.setText("🔐 Diskteki Dosyayı Doğrula")
+            QMessageBox.critical(self, "Bütünlük Hatası", err)
+
+        worker.finished_result.connect(on_done)
+        worker.failed.connect(on_err)
+        worker.start()
 
     def _activate_selected_evidence(self):
         rec = self.table.get_selected_record()
@@ -337,9 +354,10 @@ class EvidencePage(QWidget):
         cap_gb.setPlaceholderText("Örn: 64")
         delivered_by = QLineEdit("Olay Yeri Müdahale Ekibi")
         custodian = QLineEdit("Adli Bilişim Uzmanı")
-        tool = QLineEdit("Tableau T8u / Yazma Engelleyici")
+        tool = QLineEdit()
+        tool.setPlaceholderText("Örn: Tableau T8u / Donanımsal Yazma Engelleyici (Belirtilmedi)")
         wb_chk = QCheckBox("Donanımsal Yazma Engelleyici (Write-Blocker) Kullanıldı")
-        wb_chk.setChecked(True)
+        wb_chk.setChecked(False)
 
         file_row = QHBoxLayout()
         file_path_ed = QLineEdit()
@@ -357,12 +375,30 @@ class EvidencePage(QWidget):
 
         def pick_and_hash():
             fp, _ = QFileDialog.getOpenFileName(dlg, "Delil Dosyası / İmaj Seç")
-            if fp:
-                file_path_ed.setText(fp)
-                res = IntegrityService.compute_dual_hashes(fp)
+            if not fp:
+                return
+            file_path_ed.setText(fp)
+            browse_btn.setEnabled(False)
+            browse_btn.setText("⏳ 0%")
+            hw = HashWorker(fp, parent=dlg)
+            dlg._hash_worker = hw
+            hw.progress.connect(lambda p: browse_btn.setText(f"⏳ %{p}"))
+
+            def on_hashed(res: dict):
                 sha256_ed.setText(res["sha256"])
                 sha512_ed.setText(res["sha512"])
                 cap_gb.setText(f"{res['file_size'] / (1024**3):.4f}")
+                browse_btn.setEnabled(True)
+                browse_btn.setText("Seç & Hashle")
+
+            def on_err(err: str):
+                browse_btn.setEnabled(True)
+                browse_btn.setText("Seç & Hashle")
+                QMessageBox.warning(dlg, "Hash Hatası", err)
+
+            hw.finished_result.connect(on_hashed)
+            hw.failed.connect(on_err)
+            hw.start()
 
         browse_btn.clicked.connect(pick_and_hash)
 

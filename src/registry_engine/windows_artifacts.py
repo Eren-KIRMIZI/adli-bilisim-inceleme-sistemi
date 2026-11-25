@@ -3,10 +3,20 @@
 import ctypes
 import os
 import struct
+import sys
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from src.ntfs_engine.ntfs_service import filetime_to_datetime, datetime_to_filetime
+
+
+def _decode_ansi_bytes(raw: bytes, codepage: str = "cp1254") -> str:
+    """Decode legacy 8-bit LNK strings portably across Windows & POSIX (avoids LookupError on mbcs)."""
+    enc = "mbcs" if sys.platform == "win32" else codepage
+    try:
+        return raw.decode(enc, errors="replace")
+    except LookupError:
+        return raw.decode("cp1252", errors="replace")
 
 
 def _dos_datetime_to_str(dos_date: int, dos_time: int) -> Optional[str]:
@@ -67,7 +77,7 @@ class WindowsArtifactParsers:
                 if pos + local_off < len(data):
                     end_nul = data.find(b"\x00", pos + local_off)
                     if end_nul != -1:
-                        local_base_path = data[pos + local_off:end_nul].decode("mbcs", errors="replace")
+                        local_base_path = _decode_ansi_bytes(data[pos + local_off:end_nul])
             pos += info_size
 
         is_unicode = bool(link_flags & 0x80)
@@ -79,7 +89,7 @@ class WindowsArtifactParsers:
                 byte_cnt = char_cnt * 2 if is_unicode else char_cnt
                 if pos + byte_cnt <= len(data):
                     raw_s = data[pos:pos + byte_cnt]
-                    string_fields[fname] = raw_s.decode("utf-16le" if is_unicode else "mbcs", errors="replace")
+                    string_fields[fname] = raw_s.decode("utf-16le", errors="replace") if is_unicode else _decode_ansi_bytes(raw_s)
                     pos += byte_cnt
 
         return {
@@ -204,7 +214,7 @@ class WindowsArtifactParsers:
 
     @staticmethod
     def parse_jump_list(path: str) -> List[Dict[str, Any]]:
-        """Parse an OLE2 / MS-CFB .automaticDestinations-ms Jump List and extract embedded LNK targets."""
+        """Parse an OLE2 / MS-CFB .automaticDestinations-ms Jump List (supporting FAT + Mini-Stream + DIFAT)."""
         if not os.path.isfile(path):
             raise FileNotFoundError(path)
         with open(path, "rb") as f:
@@ -215,14 +225,35 @@ class WindowsArtifactParsers:
 
         sector_shift = struct.unpack("<H", data[30:32])[0]
         sector_size = 1 << sector_shift
+        mini_sector_shift = struct.unpack("<H", data[32:34])[0] or 6
+        mini_sector_size = 1 << mini_sector_shift
         first_dir_sector = struct.unpack("<I", data[48:52])[0]
+        mini_stream_cutoff = struct.unpack("<I", data[56:60])[0] or 4096
+        first_minifat_sector = struct.unpack("<I", data[60:64])[0]
+        num_minifat_sectors = struct.unpack("<I", data[64:68])[0]
+        first_difat_sector = struct.unpack("<I", data[68:72])[0]
+        num_difat_sectors = struct.unpack("<I", data[72:76])[0]
 
-        # Collect FAT sectors from DIFAT[0..108] in header
+        # Collect FAT sector IDs from header DIFAT[0..108] + chained DIFAT sectors
         fat_sectors = []
         for i in range(109):
             sid = struct.unpack("<I", data[76 + i * 4:80 + i * 4])[0]
             if sid < 0xFFFFFFFA:
                 fat_sectors.append(sid)
+
+        cur_difat = first_difat_sector
+        difat_seen = set()
+        while len(difat_seen) < num_difat_sectors and cur_difat < 0xFFFFFFFA and cur_difat not in difat_seen:
+            difat_seen.add(cur_difat)
+            off = (cur_difat + 1) * sector_size
+            if off + sector_size > len(data):
+                break
+            entries_per_sec = (sector_size // 4) - 1
+            for k in range(entries_per_sec):
+                sid = struct.unpack("<I", data[off + k * 4:off + k * 4 + 4])[0]
+                if sid < 0xFFFFFFFA:
+                    fat_sectors.append(sid)
+            cur_difat = struct.unpack("<I", data[off + entries_per_sec * 4:off + sector_size])[0]
 
         fat: List[int] = []
         for fsid in fat_sectors:
@@ -244,9 +275,35 @@ class WindowsArtifactParsers:
                 sid = fat[sid] if sid < len(fat) else 0xFFFFFFFE
             return bytes(out[:size_limit])
 
-        dir_bytes = read_chain(first_dir_sector, 1024 * 1024)
-        entries: List[Dict[str, Any]] = []
+        dir_bytes = read_chain(first_dir_sector, 2 * 1024 * 1024)
 
+        # Build Mini-Stream container (Root Entry) & MiniFAT for streams < mini_stream_cutoff
+        mini_stream_bytes = b""
+        minifat: List[int] = []
+        if len(dir_bytes) >= 128 and dir_bytes[66] == 5:  # Root Storage Entry
+            root_start = struct.unpack("<I", dir_bytes[116:120])[0]
+            root_size = struct.unpack("<I", dir_bytes[120:124])[0]
+            if root_start < 0xFFFFFFFA and root_size > 0:
+                mini_stream_bytes = read_chain(root_start, root_size)
+        if mini_stream_bytes and first_minifat_sector < 0xFFFFFFFA and num_minifat_sectors > 0:
+            mf_bytes = read_chain(first_minifat_sector, num_minifat_sectors * sector_size)
+            for j in range(0, len(mf_bytes) - 3, 4):
+                minifat.append(struct.unpack("<I", mf_bytes[j:j + 4])[0])
+
+        def read_mini_chain(start_msid: int, size_limit: int) -> bytes:
+            out = bytearray()
+            msid = start_msid
+            visited = set()
+            while msid < 0xFFFFFFFA and msid not in visited and len(out) < size_limit:
+                visited.add(msid)
+                off = msid * mini_sector_size
+                if off + mini_sector_size > len(mini_stream_bytes):
+                    break
+                out.extend(mini_stream_bytes[off:off + mini_sector_size])
+                msid = minifat[msid] if msid < len(minifat) else 0xFFFFFFFE
+            return bytes(out[:size_limit])
+
+        entries: List[Dict[str, Any]] = []
         for d_off in range(0, len(dir_bytes), 128):
             ent = dir_bytes[d_off:d_off + 128]
             if len(ent) < 128:
@@ -255,20 +312,37 @@ class WindowsArtifactParsers:
             obj_type = ent[66]
             if obj_type != 2 or name_len < 2:  # 2 = stream
                 continue
-            sname = ent[:name_len].decode("utf-16le", errors="ignore").rstrip("\x00")
+            sname = ent[:min(name_len, 64)].decode("utf-16le", errors="ignore").rstrip("\x00")
             start_sid = struct.unpack("<I", ent[116:120])[0]
             stream_size = struct.unpack("<I", ent[120:124])[0]
             if stream_size < 76:
                 continue
-            stream_data = read_chain(start_sid, stream_size)
+
+            if stream_size < mini_stream_cutoff and mini_stream_bytes and minifat:
+                stream_data = read_mini_chain(start_sid, stream_size)
+            else:
+                stream_data = read_chain(start_sid, stream_size)
+
             if stream_data[:4] == b"\x4c\x00\x00\x00":
                 try:
                     lnk = WindowsArtifactParsers.parse_lnk_bytes(stream_data, filename=f"{os.path.basename(path)}::{sname}")
                     lnk["artifact_type"] = "Jump List (LNK)"
                     lnk["stream_name"] = sname
                     entries.append(lnk)
-                except Exception:
-                    continue
+                except Exception as exc:
+                    entries.append({
+                        "artifact_type": "Jump List (Hatalı Akış)",
+                        "filename": f"{os.path.basename(path)}::{sname}",
+                        "stream_name": sname,
+                        "target_path": f"(Ayrıştırma hatası: {exc})",
+                        "working_dir": "-",
+                        "arguments": "-",
+                        "target_file_size": 0,
+                        "target_created": None,
+                        "target_accessed": None,
+                        "target_modified": None,
+                        "raw_bytes": stream_data[:512],
+                    })
         return entries
 
     @staticmethod

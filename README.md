@@ -6,6 +6,24 @@ Windows sistemler, disk/RAM imajları ve dijital deliller üzerinde vaka yöneti
 
 ---
 
+## 🔐 USB Tabanlı Kriptografik Kimlik Doğrulama (Giriş Ekranı & 2FA)
+
+Platformda klasik e-posta/kullanıcı adı girişi yerine adli bilişim laboratuvarlarına uygun **iki aşamalı donanım tabanlı kimlik doğrulama (2FA)** kapısı (`src/core/usb_auth_service.py` & `src/ui/pages/usb_login_window.py`) kullanılır:
+
+### Nasıl Giriş Yapılır? (Adım Adım Akış)
+1. **USB Güvenlik Anahtarı Beklenir (`WAITING_USB`):** Uygulama açıldığında çıkarılabilir USB sürücüleri gerçek zamanlı izlenir.
+   ![USB Güvenlik Anahtarı Bekleniyor](docs/screenshots/00_usb_login_waiting.png)
+2. **Canlı Ed25519 Challenge-Response İmza Doğrulaması (`1. Doğrulama`):** Kayıtlı USB bellek (ör. `Key D:`) takıldığında sistem yalnızca sürücü harfine veya kapasiteye bakmaz; her girişte **32 baytlık taze kriptografik rastgele challenge** üretir, USB üzerindeki `.forensic_key/usb_private_key.pem` (**Ed25519** özel anahtarı) ile imzalar ve sistemdeki açık anahtarla doğrular.
+3. **Kişisel Güvenlik Şifresi (`2. Doğrulama`):** İmza doğrulandığında ekranda **`DİJİTAL İMZA DOĞRULANDI`** bildirimi açılır ve **PBKDF2-HMAC-SHA256 (200.000 iterasyon + salt)** ile korunan kişisel güvenlik şifresi istenir. 5 hatalı denemede geçici kilitleme (lockout) devreye girer ve tüm denemeler hash zincirli `AuditLog` tablosuna işlenir.
+   ![Dijital İmza Doğrulandı ve Kişisel Şifre Ekranı](docs/screenshots/00b_usb_login_verified.png)
+4. **Güvenli Oturum Başlatılır:** Her iki doğrulama da sağlandığında ana adli inceleme konsolu açılır; USB belleğin oturum öncesi çıkarılması durumunda şifre alanı otomatik olarak tekrar kilitlenir. *(İlk kez çalıştıranlar için kayıtlı anahtar yoksa sol alt köşedeki **İlk USB Anahtarı Kurulumu** sihirbazıyla kendi USB belleğinize Ed25519 anahtar çifti tanımlayabilirsiniz.)*
+
+### 🎬 Giriş & Sistem Kullanım Videosu
+> *Video Demo Alanı:* Buraya USB anahtarını takarak giriş yapma ve modül kullanım demosunu içeren videoyu ekleyebilirsiniz.
+<!-- VIDEO_DEMO_PLACEHOLDER -->
+
+---
+
 ## Gerçek Hayatta Ne Bulur ve Nasıl Kullanılır? (Örnek Olay Senaryosu)
 
 Diyelim ki polis veya bir kurumsal olay müdahale (DFIR) uzmanı el koyulan veya teslim alınan şüpheli bir bilgisayarı inceliyor. Uzman şu temel sorulara teknik yanıt arar:
@@ -274,7 +292,7 @@ adli-bilisim-inceleme-sistemi/
 │   ├── acquisition_engine/         # Salt-okunur RAW (.dd/.001) & PID MiniDump edinim motoru
 │   ├── mobile_cloud_engine/        # Android/iOS (WhatsApp/SMS/Plist) & M365/OneDrive bulut motoru
 │   └── ui/                         # PySide6 koyu konsol teması (tokens.py), kabuk, QPainter grafikler ve 16 sayfa
-└── tests/                          # Sentetik ikili örnekler, RBAC/X.509, v3.0 DFIR ve headless Qt test paketi (76 test)
+└── tests/                          # Sentetik ikili örnekler, RBAC/X.509, USB 2FA, v3.0 DFIR ve headless Qt testleri (78 test)
 ```
 
 ---
@@ -300,7 +318,7 @@ Uygulama ilk açılışta `data/forensics.db` veritabanını WAL modunda oluştu
 python -m pytest -v
 ```
 
-Test paketi sentetik MBR/NTFS/$MFT/.E01/VHD/VHDX/QCOW2/AFF4/AD1/FAT32/exFAT/ext4/APFS/BitLocker FVEK imajları, `$UsnJrnl:$J`, `$LogFile`, VSS, `$SI`/`$FN` timestomping & ADS, `regf` Registry kovanları (UserAssist/ShimCache/ShellBags/Amcache/BAM), ESE/`SRUDB.dat`, `ActivitiesCache.db`, Task XML, WMI `OBJECTS.DATA`, yapısal `BinXml` EVTX + Sigma YAML kuralları, `.lnk`/8-TS `.pf`/Mini-Stream Jump List/`$I` dosyaları, `TriageCollector` + uzak `.ps1`, YARA (`yara-python`/Python)/HashSet, `.eml`/`.mbox`/`.pst` & `.pcap`/`.pcapng`/`hosts`, WhatsApp/iOS/M365, SQLite FTS5, `ArtifactBookmark`, EXIF JPEG'ler, Chrome `visits`+WAL SQLite veritabanları, `DUMP_HEADER64` (`CR3`) + Volatility 3 köprüsü, `Super-Timeline` + CASE/UCO/STIX 2.1/CSV/JSONL/BodyFile + XSS korumalı HTML/PDF + **X.509 RSA-PSS-SHA256 rapor imzalama**, **PBKDF2 RBAC yetkilendirme**, **RAW/bölünmüş & PID MiniDump saha edinimi**, hash zincirli `AuditLog`, WAL/kurtarma senaryoları, `100k` sayfalı tablo ölçek testi ve headless PySide6 arayüz/grafik bileşenlerini kapsayan **76 otomatik test** içerir.
+Test paketi sentetik MBR/NTFS/$MFT/.E01/VHD/VHDX/QCOW2/AFF4/AD1/FAT32/exFAT/ext4/APFS/BitLocker FVEK imajları, `$UsnJrnl:$J`, `$LogFile`, VSS, `$SI`/`$FN` timestomping & ADS, `regf` Registry kovanları (UserAssist/ShimCache/ShellBags/Amcache/BAM), ESE/`SRUDB.dat`, `ActivitiesCache.db`, Task XML, WMI `OBJECTS.DATA`, yapısal `BinXml` EVTX + Sigma YAML kuralları, `.lnk`/8-TS `.pf`/Mini-Stream Jump List/`$I` dosyaları, `TriageCollector` + uzak `.ps1`, YARA (`yara-python`/Python)/HashSet, `.eml`/`.mbox`/`.pst` & `.pcap`/`.pcapng`/`hosts`, WhatsApp/iOS/M365, SQLite FTS5, `ArtifactBookmark`, EXIF JPEG'ler, Chrome `visits`+WAL SQLite veritabanları, `DUMP_HEADER64` (`CR3`) + Volatility 3 köprüsü, `Super-Timeline` + CASE/UCO/STIX 2.1/CSV/JSONL/BodyFile + XSS korumalı HTML/PDF + **X.509 RSA-PSS-SHA256 rapor imzalama**, **PBKDF2 RBAC yetkilendirme**, **RAW/bölünmüş & PID MiniDump saha edinimi**, hash zincirli `AuditLog`, WAL/kurtarma senaryoları, `100k` sayfalı tablo ölçek testi ve headless PySide6 arayüz/grafik bileşenlerini kapsayan **78 otomatik test** içerir.
 
 Gerçek bir Windows 11 iş istasyonunda salt-okunur çalıştırılan çapraz doğrulama sonuçları (`Get-FileHash`, canlı `winreg`, `USBSTOR`, gerçek `.lnk`/OLE2 Jump List, Microsoft Edge profili ve Toolhelp32 süreçleri) için: [scripts/verify_real_world.py](scripts/verify_real_world.py) ve [Gerçek Dünya Doğrulama Raporu](docs/REAL_WORLD_VALIDATION.md).
 

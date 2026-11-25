@@ -21,7 +21,7 @@ from src.core.auth_service import AuthService
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, db_path: str = "data/forensics.db", data_dir: str = "data"):
+    def __init__(self, db_path: str = "data/forensics.db", data_dir: str = "data", usb_auth_session: dict = None):
         super().__init__()
         self.setWindowTitle("Adli Bilişim İnceleme Sistemi (Digital Forensics Suite v2.0)")
         self.setWindowIcon(get_app_icon())
@@ -34,8 +34,9 @@ class MainWindow(QMainWindow):
         self.active_evidence_id = None
         self._current_theme = "dark"
         self.auth_svc = AuthService(db_path=db_path)
-        self._active_user = "Adli Bilişim Uzmanı E. Kırmızı"
-        self._active_role = "LeadInvestigator"
+        self._active_user = (usb_auth_session or {}).get("operator_name", "Adli Bilişim Uzmanı E. Kırmızı")
+        self._active_role = (usb_auth_session or {}).get("operator_role", "LeadInvestigator")
+        self._usb_auth_session = usb_auth_session
 
         # Power-loss & crash recovery manager
         self.recovery = RecoveryManager(data_dir=data_dir)
@@ -87,6 +88,11 @@ class MainWindow(QMainWindow):
         if self.recovery.unclean_shutdown_detected:
             self.statusbar.set_recovery_notice(
                 "⚡ Önceki oturum beklenmedik kesintiden kurtarıldı (WAL + Atomik Yedek)"
+            )
+        elif self._usb_auth_session:
+            usb_d = self._usb_auth_session.get("usb", {})
+            self.statusbar.set_recovery_notice(
+                f"🔐 USB 2FA Doğrulandı ({usb_d.get('volume_label', 'Key')} {usb_d.get('drive_letter', 'D:')})"
             )
 
         # Periodic autosave checkpoint every 30 seconds

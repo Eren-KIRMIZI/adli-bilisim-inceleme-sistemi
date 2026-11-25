@@ -20,6 +20,7 @@ NAV_ITEMS: List[Tuple[str, str]] = [
     ("timeline", "Olay Zaman Çizelgesi"),
     ("relations", "Bulgu İlişkilendirme"),
     ("report", "Adli Rapor Oluşturucu"),
+    ("acquisition", "Saha İmaj Edinim"),
     ("settings", "Ayarlar && Lisanslar"),
 ]
 

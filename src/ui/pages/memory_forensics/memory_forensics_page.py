@@ -104,7 +104,7 @@ class MemoryAnalysisPage(QWidget):
 
         self.tabs.addTab(self.tbl_procs, "⚙️ Canlı Süreçler (PID/PPID)")
         self.tabs.addTab(self.tbl_pes, "🧩 Bellek PE Modülleri (MZ/PE)")
-        self.tabs.addTab(self.tbl_iocs, "🌐 Bellek Ağ & IOC Kalıntıları")
+        self.tabs.addTab(self.tbl_iocs, "🌐 Bellek Ağ && IOC Kalıntıları")
         self.tabs.addTab(self.tbl_eprocs, "🔍 Proc Pool Adayları (Heuristik)")
         splitter.addWidget(self.tabs)
 
@@ -166,12 +166,21 @@ class MemoryAnalysisPage(QWidget):
                 if vol3.get("available")
                 else "Kurulu değil (Opsiyonel)"
             )
+            hdr = res.get("header_details") or {}
+            kernel_lines = ""
+            if "DirectoryTableBase_CR3" in hdr:
+                kernel_lines = (
+                    f"CR3 (DTB):  {hdr.get('DirectoryTableBase_CR3')}\n"
+                    f"KDBG VA:    {hdr.get('PsActiveProcessHead')}\n"
+                    f"CPU / HATA: {hdr.get('NumberOfProcessors')} çekirdek | {hdr.get('BugCheckCode')}\n"
+                )
             self.summary_view.setPlainText(
                 f"DOSYA:      {res['filename']}\n"
                 f"BOYUT:      {res['size_bytes']:,} bayt\n"
                 f"FORMAT:     {res['format']}\n"
                 f"MİMARİ:     {res['architecture']}\n"
                 f"KDBG İZİ:   {kdbg}\n"
+                f"{kernel_lines}"
                 f"PROC ADAYI: {len(self._eproc_rows)} adet (Heuristik)\n"
                 f"PE MODÜLÜ:  {len(self._pe_rows)} adet\n"
                 f"IOC İZİ:    {len(self._ioc_rows)} adet\n"

@@ -1,4 +1,4 @@
-"""Top bar for global forensic case status, write blocker indicators, and profile."""
+"""Top bar for global forensic case status, write blocker indicators, and RBAC user switcher."""
 
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton
 from PySide6.QtCore import Signal, QSize
@@ -7,6 +7,7 @@ from src.ui.styles.icons import get_brand_pixmap, render_svg_icon
 
 class Topbar(QFrame):
     caseSwitchRequested = Signal()
+    userSwitchRequested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -32,7 +33,7 @@ class Topbar(QFrame):
         title_lbl.setObjectName("topbarTitle")
         title_box.addWidget(title_lbl)
 
-        suite_badge = QLabel("DFIR SUITE • V1.0")
+        suite_badge = QLabel("DFIR SUITE • V2.0")
         suite_badge.setObjectName("topbarBadge")
         title_box.addWidget(suite_badge)
         layout.addLayout(title_box)
@@ -60,10 +61,12 @@ class Topbar(QFrame):
         )
         layout.addWidget(wb_badge)
 
-        # Investigator Profile
-        profile_lbl = QLabel("Adli Uzman")
-        profile_lbl.setObjectName("topbarProfilePill")
-        layout.addWidget(profile_lbl)
+        # RBAC User / Role Switcher Button
+        self.user_btn = QPushButton(" E. Kırmızı • LeadInvestigator")
+        self.user_btn.setObjectName("topbarCaseBtn")
+        self.user_btn.setToolTip("Aktif uzman oturumunu değiştir ve RBAC rol izinlerini görüntüle")
+        self.user_btn.clicked.connect(self.userSwitchRequested.emit)
+        layout.addWidget(self.user_btn)
 
     def set_active_case(self, case_number: str, title: str):
         short_title = (title[:22] + "...") if len(title) > 22 else title
@@ -71,3 +74,7 @@ class Topbar(QFrame):
 
     def set_active_evidence(self, evidence_name: str):
         self.evidence_pill.setText(f"Delil: {evidence_name}")
+
+    def set_active_user(self, full_name: str, role: str):
+        short_name = full_name.replace("Adli Bilişim Uzmanı ", "")
+        self.user_btn.setText(f" {short_name} • {role}")

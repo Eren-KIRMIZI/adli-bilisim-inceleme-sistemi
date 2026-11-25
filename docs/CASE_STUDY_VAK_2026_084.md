@@ -11,8 +11,9 @@ Bu rapor, sistemin yalnızca birim testlerinde değil **uçtan uca gerçekçi bi
 - **Canlı Sistem Çapraz Doğrulaması (Windows 11):** PowerShell `Get-FileHash`, `winreg` (`Run`, `Services`, `ProfileList`, `TypedPaths`, `UserAssist`, `ShimCache`, `USBSTOR`) ve Win32 `Toolhelp32`.
 - **Üretilen Rapor & Dışa Aktarımlar:**
   - Yapılandırılmış Bulgular: [investigation_findings.json](../outputs/vak_2026_084/investigation_findings.json)
-  - Denetlenebilir HTML Rapor: [adli_rapor_vak_2026_084.html](../outputs/vak_2026_084/adli_rapor_vak_2026_084.html)
-  - PDF Bilirkişi Raporu: [adli_rapor_vak_2026_084.pdf](../outputs/vak_2026_084/adli_rapor_vak_2026_084.pdf)
+  - **Otomatik İmaj Edinim & Doğrulama (v2.0):** [acquired_suspect_disk.dd](../outputs/vak_2026_084/acquired_suspect_disk.dd) (`327,680 B`, `post_verification_matched: true`, manifest: [acquired_suspect_disk.dd.acquisition.json](../outputs/vak_2026_084/acquired_suspect_disk.dd.acquisition.json))
+  - **Denetlenebilir HTML & X.509 İmza:** [adli_rapor_vak_2026_084.html](../outputs/vak_2026_084/adli_rapor_vak_2026_084.html) + [adli_rapor_vak_2026_084.html.sig.json](../outputs/vak_2026_084/adli_rapor_vak_2026_084.html.sig.json)
+  - **PDF Bilirkişi Raporu & X.509 İmza (RSA-PSS-SHA256):** [adli_rapor_vak_2026_084.pdf](../outputs/vak_2026_084/adli_rapor_vak_2026_084.pdf) + [adli_rapor_vak_2026_084.pdf.sig.json](../outputs/vak_2026_084/adli_rapor_vak_2026_084.pdf.sig.json) (`cert_fingerprint_sha256: 29e5f151b0b53cd758eb1dd99501a8dd3b7d3e71667fd7b94bc45687809edb4d`, `pdf_verified_valid: true`)
   - CASE / UCO JSON-LD Paketi: [vak_2026_084_case_uco.json](../outputs/vak_2026_084/vak_2026_084_case_uco.json)
   - Timesketch JSONL Zaman Çizelgesi: [vak_2026_084_timeline.jsonl](../outputs/vak_2026_084/vak_2026_084_timeline.jsonl)
   - Sleuth Kit 11-Sütun BodyFile: [vak_2026_084_bodyfile.txt](../outputs/vak_2026_084/vak_2026_084_bodyfile.txt)

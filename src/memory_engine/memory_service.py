@@ -176,7 +176,28 @@ class MemoryForensicsEngine:
 
     def _detect_dump_format(self, head: bytes):
         if head.startswith(b"PAGEDU64"):
-            return "Windows 64-bit Crash Dump (PAGEDU64)", "x64", {"Signature": "PAGEDU64"}
+            details: Dict[str, Any] = {"Signature": "PAGEDU64"}
+            if len(head) >= 160:
+                major_ver = struct.unpack("<I", head[8:12])[0]
+                minor_ver = struct.unpack("<I", head[12:16])[0]
+                dtb_cr3 = struct.unpack("<Q", head[16:24])[0]
+                pfn_db = struct.unpack("<Q", head[24:32])[0]
+                ps_loaded = struct.unpack("<Q", head[32:40])[0]
+                ps_active = struct.unpack("<Q", head[40:48])[0]
+                machine_type = struct.unpack("<I", head[48:52])[0]
+                num_cpus = struct.unpack("<I", head[52:56])[0]
+                bugcheck = struct.unpack("<I", head[56:60])[0]
+                details.update({
+                    "OS_Version": f"{major_ver}.{minor_ver}" if major_ver or minor_ver else "Sentetik / Bilinmiyor",
+                    "DirectoryTableBase_CR3": f"0x{dtb_cr3:016X}",
+                    "PfnDataBase": f"0x{pfn_db:016X}",
+                    "PsLoadedModuleList": f"0x{ps_loaded:016X}",
+                    "PsActiveProcessHead": f"0x{ps_active:016X}",
+                    "MachineImageType": f"0x{machine_type:04X}",
+                    "NumberOfProcessors": num_cpus,
+                    "BugCheckCode": f"0x{bugcheck:08X}",
+                })
+            return "Windows 64-bit Crash Dump (PAGEDU64)", "x64", details
         if head.startswith(b"PAGEDUMP"):
             return "Windows 32-bit Crash Dump (PAGEDUMP)", "x86", {"Signature": "PAGEDUMP"}
         if head.startswith(b"HIBR") or head.startswith(b"hibr"):

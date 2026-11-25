@@ -8,6 +8,7 @@ Bağımlılıklar ve lisansları proje ilkeleri gereği doğrulanmıştır. Yaln
 | PySide6 | LGPL-3.0 (Qt) | onaylı | Masaüstü Qt Widgets arayüz katmanı |
 | SQLAlchemy | MIT | onaylı | SQLite veritabanı ORM katmanı |
 | Pydantic | MIT | onaylı | Standart analiz çıktısı veri şeması (`ForensicArtifactModel`) |
+| cryptography | Apache-2.0 / BSD-3-Clause | onaylı | X.509 RSA-PSS-SHA256 dijital rapor imzalama ve doğrulama |
 | ReportLab | BSD | onaylı | Çevrimdışı PDF adli inceleme raporu oluşturma |
 | Jinja2 | BSD-3-Clause | onaylı | Denetlenebilir HTML adli rapor şablonlama |
 | Matplotlib | PSF / BSD | onaylı | Görselleştirme desteği |

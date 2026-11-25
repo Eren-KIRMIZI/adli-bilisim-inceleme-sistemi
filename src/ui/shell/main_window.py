@@ -3,7 +3,8 @@
 import os
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QStackedWidget, QApplication
+    QStackedWidget, QApplication, QDialog, QFormLayout, QComboBox,
+    QLineEdit, QPushButton, QLabel, QMessageBox
 )
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
@@ -16,20 +17,25 @@ from src.ui.styles.icons import get_app_icon
 from src.case_engine.case_service import CaseService
 from src.evidence_engine.evidence_service import EvidenceService
 from src.core.recovery import RecoveryManager
+from src.core.auth_service import AuthService
 
 
 class MainWindow(QMainWindow):
     def __init__(self, db_path: str = "data/forensics.db", data_dir: str = "data"):
         super().__init__()
-        self.setWindowTitle("Adli Bilişim İnceleme Sistemi (Digital Forensics Suite)")
+        self.setWindowTitle("Adli Bilişim İnceleme Sistemi (Digital Forensics Suite v2.0)")
         self.setWindowIcon(get_app_icon())
         self.resize(1400, 880)
         self.setMinimumSize(1100, 700)
 
         self.db_path = db_path
+        self.data_dir = data_dir
         self.active_case_id = None
         self.active_evidence_id = None
         self._current_theme = "dark"
+        self.auth_svc = AuthService(db_path=db_path)
+        self._active_user = "Adli Bilişim Uzmanı E. Kırmızı"
+        self._active_role = "LeadInvestigator"
 
         # Power-loss & crash recovery manager
         self.recovery = RecoveryManager(data_dir=data_dir)
@@ -46,6 +52,8 @@ class MainWindow(QMainWindow):
         # Topbar
         self.topbar = Topbar(self)
         self.topbar.caseSwitchRequested.connect(self._on_case_switch_clicked)
+        self.topbar.userSwitchRequested.connect(self._on_user_switch_clicked)
+        self.topbar.set_active_user(self._active_user, self._active_role)
         root_layout.addWidget(self.topbar)
 
         # Main Body: Sidebar + Page Stack
@@ -101,8 +109,10 @@ class MainWindow(QMainWindow):
         from src.ui.pages.timeline_page import TimelinePage
         from src.ui.pages.relations.relations_page import RelationsPage
         from src.ui.pages.reports_page import ReportsPage
+        from src.ui.pages.acquisition_page import AcquisitionPage
         from src.ui.pages.settings_page import SettingsPage
 
+        cert_dir = os.path.join(self.data_dir, "certs")
         self.dashboard_page = DashboardPage(db_path=self.db_path)
         self.cases_page = CasesPage(db_path=self.db_path)
         self.evidence_page = EvidencePage(db_path=self.db_path)
@@ -112,11 +122,12 @@ class MainWindow(QMainWindow):
         self.usb_page = UsbAnalysisPage()
         self.browser_page = BrowserAnalysisPage()
         self.memory_page = MemoryAnalysisPage()
-        self.file_page = FileAnalysisPage()
+        self.file_page = FileAnalysisPage(hashset_db_path=os.path.join(self.data_dir, "hashsets.db"))
         self.timeline_page = TimelinePage(db_path=self.db_path)
         self.relations_page = RelationsPage(db_path=self.db_path)
-        self.reports_page = ReportsPage(db_path=self.db_path)
-        self.settings_page = SettingsPage()
+        self.reports_page = ReportsPage(db_path=self.db_path, cert_dir=cert_dir)
+        self.acquisition_page = AcquisitionPage()
+        self.settings_page = SettingsPage(db_path=self.db_path, cert_dir=cert_dir)
 
         # Global case & evidence synchronization signals
         self.cases_page.activeCaseSelected.connect(self._on_active_case_changed)
@@ -136,6 +147,7 @@ class MainWindow(QMainWindow):
             self.timeline_page,
             self.relations_page,
             self.reports_page,
+            self.acquisition_page,
             self.settings_page,
         ]
 
@@ -227,12 +239,62 @@ class MainWindow(QMainWindow):
                 ws["disk_sha512"],
                 ws["disk_size"],
             )
+            self.acquisition_page.populate_preloaded_manifest(
+                ws["disk_image"],
+                ws["disk_sha256"],
+                ws["disk_sha512"],
+                ws["disk_size"],
+            )
             self.timeline_page.refresh_records()
             self.relations_page.refresh_records()
             self.reports_page.refresh_records()
             self.dashboard_page.refresh_data()
         except Exception:
             pass
+
+    def _on_user_switch_clicked(self):
+        """Authenticate and switch the active investigator / RBAC role cleanly."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Kurumsal Oturum & Yetki Değiştir (RBAC)")
+        dlg.setMinimumWidth(420)
+        lay = QVBoxLayout(dlg)
+
+        info = QLabel(
+            f"Aktif Uzman: {self._active_user}\nAktif Rol:   {self._active_role}"
+        )
+        info.setObjectName("mutedLabel")
+        lay.addWidget(info)
+
+        form = QFormLayout()
+        user_cb = QComboBox()
+        for u in self.auth_svc.list_users():
+            user_cb.addItem(f"{u['username']} — {u['full_name']} ({u['role']})", u["username"])
+        pwd_edit = QLineEdit()
+        pwd_edit.setEchoMode(QLineEdit.Password)
+        pwd_edit.setPlaceholderText("Uzman parolası (Varsayılan demo: Forensic2026! / Admin2026!)")
+        form.addRow("Kullanıcı:", user_cb)
+        form.addRow("Parola:", pwd_edit)
+        lay.addLayout(form)
+
+        btn = QPushButton("Oturumu Doğrula & Geç")
+        btn.setObjectName("primaryBtn")
+        lay.addWidget(btn)
+
+        def do_auth():
+            auth = self.auth_svc.authenticate(user_cb.currentData(), pwd_edit.text())
+            if not auth:
+                QMessageBox.warning(dlg, "Doğrulama Hatası", "Kullanıcı adı veya parola hatalı.")
+                return
+            self._active_user = auth["full_name"]
+            self._active_role = auth["role"]
+            self.topbar.set_active_user(self._active_user, self._active_role)
+            self.reports_page.set_operator(self._active_user, self._active_role)
+            self.acquisition_page.set_operator(self._active_user)
+            self.dashboard_page.refresh_data()
+            dlg.accept()
+
+        btn.clicked.connect(do_auth)
+        dlg.exec()
 
     def set_theme(self, theme_name: str = "dark"):
         # Application runs strictly in flagship dark mode

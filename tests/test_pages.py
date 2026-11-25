@@ -128,19 +128,21 @@ def test_timeline_relations_reports_settings_pages(qapp, tmp_path):
     rel = RelationsPage(db_path=db_file)
     assert len(rel._graph_data["nodes"]) >= 6
 
-    rep = ReportsPage(db_path=db_file)
+    rep = ReportsPage(db_path=db_file, cert_dir=str(tmp_path / "certs"))
     assert "VAK-2026-084" in rep.preview.toHtml()
 
-    st = SettingsPage()
-    assert st.lic_table.rowCount() >= 9
+    st = SettingsPage(db_path=db_file, cert_dir=str(tmp_path / "certs"))
+    assert st.lic_table.rowCount() >= 10
+    assert st.rbac_table.rowCount() >= 4
 
 
 def test_main_window_integration(qapp, tmp_path):
     qapp.setStyle("Fusion")
     win = MainWindow(db_path=str(tmp_path / "main.db"), data_dir=str(tmp_path))
-    assert win.stack.count() == 14
+    assert win.stack.count() == 15
     assert "VAK-" in win.topbar.case_btn.text()
     assert isinstance(win.settings_page, SettingsPage)
+    assert win.acquisition_page.targets_table.rowCount() >= 1
     # Verify escaped ampersand in sidebar labels
     assert "&&" in win.sidebar.buttons[3].text()
     # Verify flagship dark-only theme enforcement

@@ -132,6 +132,18 @@ class AuditLog(Base):
     case = relationship("Case", back_populates="audit_logs")
 
 
+class UserAccount(Base):
+    __tablename__ = "user_accounts"
+    id = Column(Integer, primary_key=True)
+    username = Column(String(64), unique=True, nullable=False)
+    full_name = Column(String(128), nullable=False)
+    role = Column(String(32), nullable=False, default="Analyst")  # Admin, LeadInvestigator, Analyst, Reviewer
+    salt = Column(String(64), nullable=False)
+    password_hash = Column(String(128), nullable=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 def _compute_audit_entry_hash(
     prev_hash: str,
     case_id,

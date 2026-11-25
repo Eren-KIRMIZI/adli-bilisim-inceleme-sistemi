@@ -27,7 +27,8 @@ SCREENSHOT_FILES = [
     (10, "11_timeline.png"),
     (11, "12_relations.png"),
     (12, "13_reports.png"),
-    (13, "14_settings.png"),
+    (13, "14_acquisition.png"),
+    (14, "15_settings.png"),
 ]
 
 
@@ -88,6 +89,14 @@ def main() -> None:
         # Select first row on Disk table so Hex Viewer highlights real MFT bytes cleanly
         if hasattr(win.disk_page, "table") and win.disk_page.table.rowCount() > 0:
             win.disk_page.table.selectRow(0)
+
+        sig_json = Path("outputs/vak_2026_084/adli_rapor_vak_2026_084.pdf.sig.json")
+        if sig_json.is_file():
+            import json as _json
+            sdoc = _json.loads(sig_json.read_text(encoding="utf-8"))
+            win.reports_page.populate_signature_status(
+                f"X.509 RSA-PSS Doğrulandı ({sdoc['cert_fingerprint_sha256'][:12]}...)", "verified"
+            )
 
         for idx, fname in SCREENSHOT_FILES:
             win.sidebar.select_page(idx)

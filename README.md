@@ -103,15 +103,20 @@ Disk (`$MFT`), USB, EVTX, Muhafaza Zinciri, Denetim ve YARA/RAM/Ağ bulguların�
 
 Vaka, deliller, kullanıcı hesapları ve USB/artefakt izleri arasındaki bağlantıları görselleştirir; doğrulanabilir kayıtlı kanıtları **düz çizgiyle**, yalnızca zamansal yakınlığa dayanan hipotezleri ise **kesik çizgiyle** açıkça ayırır.
 
-### 13. Adli Rapor Oluşturucu (HTML & PDF)
+### 13. Adli Rapor Oluşturucu (HTML, PDF & X.509 İmza)
 ![Adli Rapor Oluşturucu](docs/screenshots/13_reports.png)
 
-Seçili vaka için delil SHA-256 özetlerini, muhafaza zincirini, USB/IOC bulgularını, uzman değerlendirmesini ve analiz sınırlamalarını içeren XSS korumalı HTML ve Türkçe karakter destekli PDF adli raporlarını canlı önizlemeyle üretir.
+Seçili vaka için delil SHA-256 özetlerini, muhafaza zincirini, USB/IOC bulgularını, uzman değerlendirmesini ve analiz sınırlamalarını içeren XSS korumalı HTML ve Türkçe karakter destekli PDF adli raporlarını canlı önizlemeyle üretir; **X.509 RSA-PSS-SHA256** ile kriptografik olarak imzalayıp bağımsız imza doğrulaması (`.sig.json`) yapar.
 
-### 14. Ayarlar & Açık Kaynak Lisans Kaydı
-![Ayarlar ve Lisanslar](docs/screenshots/14_settings.png)
+### 14. Saha İmaj Edinim (Acquisition)
+![Saha İmaj Edinim](docs/screenshots/14_acquisition.png)
 
-Sabit koyu laboratuvar arayüzü politikasını, SQLite WAL + atomik çökme kurtarma ilkelerini ve ticari/lisans uyumluluğu doğrulanmış açık kaynak kütüphane envanterini (`docs/LICENSES.md`) gösterir.
+Canlı Windows mantıksal birimleri ve fiziksel disk hedeflerini (`\\.\PhysicalDriveN`) salt-okunur listeler; tek parça (`.dd`) veya bölünmüş (`.001/.002`) ham imaj alırken anlık SHA-256/SHA-512 hesaplar, geri-okuma doğrulaması (`post_verification_matched`) yapar ve donanımsal yazma engelleyici kaydıyla `.acquisition.json` manifesti üretir.
+
+### 15. Ayarlar, Kurumsal RBAC & Açık Kaynak Lisans Kaydı
+![Ayarlar, RBAC ve Lisanslar](docs/screenshots/15_settings.png)
+
+Sabit koyu laboratuvar arayüzü politikasını, **PBKDF2-HMAC-SHA256** korumalı çoklu kullanıcı/rol matrisini (**RBAC**: `Admin`, `LeadInvestigator`, `Analyst`, `Reviewer`), X.509 laboratuvar imza sertifikası parmak izini ve doğrulanmış açık kaynak kütüphane envanterini (`docs/LICENSES.md`) gösterir.
 
 #### 3. USB Cihaz İncelemesi (*Hangi harici bellekler takılmış?*)
 **USB Cihaz Analizi** modülü Windows Registry (`USBSTOR`, `MountedDevices`) kayıtlarından bağlanan aygıtları çıkarır:
@@ -192,7 +197,18 @@ Kritik adli incelemeler sırasında yaşanabilecek ani elektrik kesintisi, siste
 
 ---
 
-## Modüller ve İşlevleri (14 Entegre Modül)
+## v2.0 Kurumsal & Saha İnceleme Katmanları
+
+Başlangıçta v2.0 yol haritasında yer alan ileri seviye laboratuvar gereksinimleri projeye entegre edilmiştir:
+
+- **Saha İmaj Edinim (`src/acquisition_engine/`):** Canlı Windows sürücülerini ve `\\.\PhysicalDriveN` aygıtlarını salt-okunur listeler, bölünmüş/tek parça RAW (`.dd` / `.001`) imaj alır, tek geçişli SHA-256/SHA-512 hesaplayıp geri-okuma ile doğrular ve donanımsal write-blocker varsayılanı `False` kalacak şekilde `.acquisition.json` manifesti üretir.
+- **Canlı İşletim Sistemi Yetki & UAC Yönetimi (`src/core/privilege_service.py`):** Standart kullanıcı oturumunda kilitli olan `System.evtx` / `Security.evtx` ve `C:\Windows\Prefetch` erişim durumunu dürüstçe raporlar; kullanıcının açık onayıyla resmi Windows UAC (`runas`) yükseltmesi başlatabilir ve yükseltilmiş oturumda `wevtutil epl` ile canlı kanal + Win10/11 MAM (`ntdll.RtlDecompressBufferEx`) Prefetch dosyalarını toplayabilir.
+- **Gelişmiş RAM Çekirdek Başlığı & Volatility 3 Köprüsü (`src/memory_engine/`):** `PAGEDU64` (`DUMP_HEADER64`) içerisinden `DirectoryTableBase (CR3)`, `PsLoadedModuleList`, `PsActiveProcessHead`, çekirdek sayısı ve `BugCheckCode` alanlarını çözümler; opsiyonel **Volatility 3** kurulu ortamlarda `-r json` eklenti köprüsünü çalıştırır.
+- **Kurumsal Çoklu Kullanıcı (RBAC) & X.509 Rapor İmzalama (`src/core/auth_service.py`, `src/core/signing_service.py`):** `PBKDF2-HMAC-SHA256` (200.000 iterasyon + salt) parola doğrulamasıyla `Admin`, `LeadInvestigator`, `Analyst` ve `Reviewer` rollerini ayırır; HTML/PDF raporları **X.509 RSA-2048 RSA-PSS-SHA256** sertifikasıyla imzalayıp 1 baytlık değişikliği bile yakalayan bağımsız imza doğrulaması sunar.
+
+---
+
+## Modüller ve İşlevleri (15 Entegre Modül)
 
 | # | Modül | Motor & Arayüz | Ne İşe Yarar? |
 |---|---|---|---|
@@ -208,8 +224,9 @@ Kritik adli incelemeler sırasında yaşanabilecek ani elektrik kesintisi, siste
 | **10** | **Dosya, YARA & E-posta** | `file_engine/`, `email_network_engine/` | Magic-byte dosya imzası & **uzantı sahteciliği**, Shannon entropisi, **JPEG EXIF**, yerel **SQLite Hash Set (NSRL/IOC CSV içe aktarma)**, saf Python **YARA-stili tekil/klasör tarayıcısı**, **RFC 5322 `.eml`** e-posta inceleme, diff ve duplicate taraması. |
 | **11** | **Olay Zaman Çizelgesi** | `timeline_engine/` | USB, Muhafaza Zinciri, Denetim, DB `ForensicArtifact` ve `$MFT`/EVTX/Prefetch/Tarayıcı/E-posta artefaktlarını tek UTC **Super-Timeline**'da birleştirir; saatlik yoğunluk grafiği, filtreleme ve $\Delta t$ hesabı sunar. |
 | **12** | **Bulgu İlişkilendirme** | `correlation_engine/` | NetworkX + etkileşimli `QGraphicsView` ile vaka-delil-kullanıcı-USB grafiği oluşturur; kanıtlı bağlantılar ile kanıtlanmamış zamansal hipotezleri net ayırır. |
-| **13** | **Adli Rapor Oluşturucu** | `report_engine/` | Jinja2 ile **HTML** (canlı önizlemeli) ve ReportLab ile Türkçe font destekli **PDF** denetlenebilir adli inceleme raporu üretir (Çoklu Modül Artefakt/IOC bölümü dahil). |
-| **14** | **Ayarlar & Lisanslar** | `settings_page.py` | Forensic Dark Console görünüm politikası, adli çalışma ilkeleri ve doğrulanmış açık kaynak bağımlılık lisans tablosu (`docs/LICENSES.md`). |
+| **13** | **Adli Rapor Oluşturucu** | `report_engine/`, `signing_service.py` | Jinja2 HTML, ReportLab PDF raporu ve **X.509 RSA-PSS-SHA256** kriptografik imza üretimi/doğrulaması. |
+| **14** | **Saha İmaj Edinim** | `acquisition_engine/` | Mantıksal/fiziksel disklerden salt-okunur RAW (`.dd`/`.001`) imaj edinimi, SHA-256/512 ve geri-okuma doğrulaması. |
+| **15** | **Ayarlar, RBAC & Lisanslar** | `settings_page.py`, `auth_service.py` | Sabit koyu konsol ilkeleri, PBKDF2-HMAC-SHA256 çoklu kullanıcı RBAC matrisi, X.509 sertifika parmak izi ve lisans kaydı. |
 
 ---
 
@@ -237,8 +254,9 @@ adli-bilisim-inceleme-sistemi/
 │   ├── timeline_engine/            # UTC birleşik zaman çizelgesi ve Δt hesaplayıcı
 │   ├── correlation_engine/         # NetworkX bulgu ilişkilendirme motoru
 │   ├── report_engine/              # Jinja2 HTML ve ReportLab PDF rapor üreticisi
-│   └── ui/                         # PySide6 koyu konsol teması (tokens.py), kabuk, QPainter grafikler ve 14 sayfa
-└── tests/                          # Sentetik ikili örnekler, bileşenler ve headless Qt test paketi (68 test)
+│   ├── acquisition_engine/         # Salt-okunur RAW (.dd/.001) saha imaj edinim ve doğrulama motoru
+│   └── ui/                         # PySide6 koyu konsol teması (tokens.py), kabuk, QPainter grafikler ve 15 sayfa
+└── tests/                          # Sentetik ikili örnekler, RBAC/X.509 ve headless Qt test paketi (72 test)
 ```
 
 ---
@@ -264,7 +282,7 @@ Uygulama ilk açılışta `data/forensics.db` veritabanını WAL modunda oluştu
 python -m pytest -v
 ```
 
-Test paketi sentetik MBR/NTFS/$MFT/.E01/BitLocker imajları, `$UsnJrnl:$J`, `$SI`/`$FN` timestomping & ADS, `regf` Registry kovanları (UserAssist/ShimCache/ShellBags/Amcache), yapısal `BinXml` EVTX kayıtları, `.lnk`/8-TS `.pf`/Mini-Stream Jump List/`$I` dosyaları, `TriageCollector`, YARA/HashSet, `.eml` & `.pcap`/`hosts`, EXIF JPEG'ler, Chrome `visits`+WAL SQLite veritabanları, crash dump başlıkları + Volatility 3 köprüsü, `Super-Timeline` + CASE/UCO/JSONL/BodyFile + XSS korumalı HTML/PDF raporlama, hash zincirli `AuditLog`, WAL/kurtarma senaryoları, `100k` sayfalı tablo ölçek testi ve headless PySide6 arayüz/grafik bileşenlerini kapsayan **68 otomatik test** içerir.
+Test paketi sentetik MBR/NTFS/$MFT/.E01/BitLocker imajları, `$UsnJrnl:$J`, `$SI`/`$FN` timestomping & ADS, `regf` Registry kovanları (UserAssist/ShimCache/ShellBags/Amcache), yapısal `BinXml` EVTX kayıtları, `.lnk`/8-TS `.pf`/Mini-Stream Jump List/`$I` dosyaları, `TriageCollector`, YARA/HashSet, `.eml` & `.pcap`/`hosts`, EXIF JPEG'ler, Chrome `visits`+WAL SQLite veritabanları, `DUMP_HEADER64` (`CR3`) + Volatility 3 köprüsü, `Super-Timeline` + CASE/UCO/JSONL/BodyFile + XSS korumalı HTML/PDF + **X.509 RSA-PSS-SHA256 rapor imzalama**, **PBKDF2 RBAC yetkilendirme**, **RAW/bölünmüş saha imaj edinimi**, hash zincirli `AuditLog`, WAL/kurtarma senaryoları, `100k` sayfalı tablo ölçek testi ve headless PySide6 arayüz/grafik bileşenlerini kapsayan **72 otomatik test** içerir.
 
 Gerçek bir Windows 11 iş istasyonunda salt-okunur çalıştırılan çapraz doğrulama sonuçları (`Get-FileHash`, canlı `winreg`, `USBSTOR`, gerçek `.lnk`/OLE2 Jump List, Microsoft Edge profili ve Toolhelp32 süreçleri) için: [scripts/verify_real_world.py](scripts/verify_real_world.py) ve [Gerçek Dünya Doğrulama Raporu](docs/REAL_WORLD_VALIDATION.md).
 

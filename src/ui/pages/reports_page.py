@@ -1,5 +1,6 @@
 """Forensic Report Generator Page with live HTML preview and PDF/HTML export."""
 
+import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QPushButton,
     QComboBox, QCheckBox, QTextEdit, QTextBrowser, QSplitter,
@@ -9,16 +10,21 @@ from PySide6.QtCore import Qt
 
 from src.case_engine.case_service import CaseService
 from src.report_engine.report_service import ReportService
+from src.core.auth_service import AuthService
+from src.core.signing_service import SigningService
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.status_indicator import StatusBadge
 
 
 class ReportsPage(QWidget):
-    """Auditable forensic report builder (HTML & PDF)."""
+    """Auditable forensic report builder (HTML & PDF) with X.509 cryptographic signing."""
 
-    def __init__(self, db_path: str = "data/forensics.db", parent=None):
+    def __init__(self, db_path: str = "data/forensics.db", cert_dir: str = "data/certs", parent=None):
         super().__init__(parent)
         self.db_path = db_path
+        self.cert_dir = cert_dir
+        self._active_user = "Adli Bilişim Uzmanı E. Kırmızı"
+        self._active_role = "LeadInvestigator"
         self.case_svc = CaseService(db_path=db_path)
         self.report_svc = ReportService(db_path=db_path)
 
@@ -80,15 +86,33 @@ class ReportsPage(QWidget):
         c_lay.addWidget(preview_btn)
 
         btn_row = QHBoxLayout()
-        html_btn = QPushButton("🌐 HTML Kaydet")
+        html_btn = QPushButton(" HTML Kaydet")
         html_btn.clicked.connect(self._export_html)
         btn_row.addWidget(html_btn)
 
-        pdf_btn = QPushButton("📑 PDF Kaydet")
+        pdf_btn = QPushButton(" PDF Kaydet")
         pdf_btn.setObjectName("primaryBtn")
         pdf_btn.clicked.connect(self._export_pdf)
         btn_row.addWidget(pdf_btn)
         c_lay.addLayout(btn_row)
+
+        # X.509 RSA-PSS Cryptographic Signing Section
+        sig_title = QLabel("Kriptografik X.509 Rapor İmzalama (RSA-PSS)")
+        sig_title.setObjectName("sectionTitle")
+        c_lay.addWidget(sig_title)
+
+        sig_row = QHBoxLayout()
+        self.sign_btn = QPushButton(" X.509 İmzala")
+        self.sign_btn.clicked.connect(self._sign_exported_report)
+        sig_row.addWidget(self.sign_btn)
+
+        verify_sig_btn = QPushButton(" İmza Doğrula")
+        verify_sig_btn.clicked.connect(self._verify_report_signature)
+        sig_row.addWidget(verify_sig_btn)
+        c_lay.addLayout(sig_row)
+
+        self.sig_status_badge = StatusBadge("X.509 İmza Modülü Hazır", "info")
+        c_lay.addWidget(self.sig_status_badge)
         c_lay.addStretch()
         splitter.addWidget(cfg)
 
@@ -149,3 +173,59 @@ class ReportsPage(QWidget):
             return
         self.report_svc.export_pdf(path, **self._gather_kwargs())
         QMessageBox.information(self, "PDF Rapor Hazır", f"PDF raporu oluşturuldu:\n{path}")
+
+    def set_operator(self, full_name: str, role: str) -> None:
+        self._active_user = full_name
+        self._active_role = role
+
+    def populate_signature_status(self, label: str, variant: str = "verified") -> None:
+        self.sig_status_badge.set_status(label, variant)
+
+    def _sign_exported_report(self):
+        if not AuthService.can_perform(self._active_role, "sign_report"):
+            QMessageBox.warning(
+                self,
+                "RBAC Yetki Reddi",
+                f"Aktif rol '{self._active_role}' kriptografik rapor imzalama yetkisine sahip değil (LeadInvestigator/Admin gerekir).",
+            )
+            return
+        fp, _ = QFileDialog.getOpenFileName(
+            self, "İmzalanacak PDF/HTML Raporu Seç", "outputs", "Raporlar (*.pdf *.html);;Tüm Dosyalar (*.*)"
+        )
+        if not fp:
+            return
+        sig_doc = SigningService.sign_file(fp, signer_name=self._active_user, signer_role=self._active_role, cert_dir=self.cert_dir)
+        fp_short = sig_doc["cert_fingerprint_sha256"][:16]
+        self.sig_status_badge.set_status(f"X.509 İmzalandı ({fp_short}...)", "verified")
+        QMessageBox.information(
+            self,
+            "X.509 İmza Oluşturuldu",
+            f"Rapor RSA-PSS-SHA256 ile imzalandı.\nİmza Paketi:\n{sig_doc['signature_path']}\nSertifika SHA-256: {sig_doc['cert_fingerprint_sha256']}",
+        )
+
+    def _verify_report_signature(self):
+        fp, _ = QFileDialog.getOpenFileName(
+            self, "Doğrulanacak Rapor Dosyasını Seç", "outputs", "Raporlar (*.pdf *.html);;Tüm Dosyalar (*.*)"
+        )
+        if not fp:
+            return
+        sp = fp + ".sig.json"
+        if not os.path.isfile(sp):
+            sp, _ = QFileDialog.getOpenFileName(self, "İmza Dosyasını Seç (.sig.json)", os.path.dirname(fp), "Signature (*.sig.json)")
+        if not sp or not os.path.isfile(sp):
+            return
+        res = SigningService.verify_signature(fp, sp)
+        if res["valid"]:
+            self.sig_status_badge.set_status("İmza Geçerli (Kurcalanmamış)", "verified")
+            QMessageBox.information(
+                self,
+                "Kriptografik Doğrulama Başarılı",
+                f"X.509 İmza Geçerli!\nİmzalayan: {res['signer_name']} ({res['signer_role']})\nTarih: {res['signed_at_utc']}\nSHA-256: {res['actual_sha256']}",
+            )
+        else:
+            self.sig_status_badge.set_status("İmza Geçersiz / Değiştirilmiş!", "critical")
+            QMessageBox.critical(
+                self,
+                "Kriptografik Uyuşmazlık",
+                f"UYARI: Rapor dosyası imzalandıktan sonra değiştirilmiş veya imza geçersiz!\nHash Eşleşti: {res['hash_matched']}\nKripto Geçerli: {res['signature_crypto_valid']}",
+            )

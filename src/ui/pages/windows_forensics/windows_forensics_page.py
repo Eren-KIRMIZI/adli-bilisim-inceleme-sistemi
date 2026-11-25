@@ -13,6 +13,7 @@ from src.registry_engine.hive_parser import RegistryHiveParser, create_synthetic
 from src.registry_engine.windows_artifacts import WindowsArtifactParsers, create_synthetic_windows_artifacts
 from src.eventlog_engine.evtx_service import EventLogService, create_synthetic_evtx_file
 from src.core.triage_collector import TriageCollector
+from src.core.privilege_service import PrivilegeService
 from src.email_network_engine import NetworkForensicsService, create_synthetic_pcap_file
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.search_field import ForensicSearchField
@@ -41,6 +42,17 @@ class WindowsForensicsPage(QWidget):
         header_bar.addWidget(self.breadcrumb)
         header_bar.addStretch()
 
+        priv = PrivilegeService.get_status()
+        self.priv_badge = StatusBadge(
+            "Yönetici Modu (Elevated)" if priv["is_admin"] else "Standart Kullanıcı (Canlı EVTX/PF Kısıtlı)",
+            "verified" if priv["is_admin"] else "warning",
+        )
+        header_bar.addWidget(self.priv_badge)
+
+        elev_btn = QPushButton("Canlı EVTX/PF Topla")
+        elev_btn.clicked.connect(self._collect_elevated_live)
+        header_bar.addWidget(elev_btn)
+
         self.mode_badge = StatusBadge("Salt Okunur Ayrıştırıcı", "verified")
         header_bar.addWidget(self.mode_badge)
         main_layout.addLayout(header_bar)
@@ -49,8 +61,8 @@ class WindowsForensicsPage(QWidget):
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_registry_tab(), "🗂️ Registry Hive Gezgini")
         self.tabs.addTab(self._build_evtx_tab(), "📜 Windows Event Logs (.evtx)")
-        self.tabs.addTab(self._build_artifacts_tab(), "⚡ Çalıştırma & Dosya İzleri (.pf / .lnk / $I)")
-        self.tabs.addTab(self._build_network_tab(), "🌐 Ağ / PCAP & Hosts İzleri")
+        self.tabs.addTab(self._build_artifacts_tab(), "⚡ Çalıştırma && Dosya İzleri (.pf / .lnk / $I)")
+        self.tabs.addTab(self._build_network_tab(), "🌐 Ağ / PCAP && Hosts İzleri")
         main_layout.addWidget(self.tabs, 1)
 
     # ------------------------------------------------------------------
@@ -121,6 +133,39 @@ class WindowsForensicsPage(QWidget):
         fp, _ = QFileDialog.getOpenFileName(self, "Windows Registry Hive Seç", "", "Registry Hive (*; *.dat; *.hiv);;Tüm Dosyalar (*.*)")
         if fp:
             self.load_hive(fp)
+
+    def _collect_elevated_live(self):
+        res = PrivilegeService.collect_elevated_live_artifacts()
+        loaded_evtx = 0
+        loaded_pf = 0
+        for ep in res.get("exported_evtx", []):
+            try:
+                self.load_evtx(ep)
+                loaded_evtx += 1
+            except Exception:
+                pass
+        for pf in res.get("copied_pf", []):
+            try:
+                self.load_artifact_file(pf)
+                loaded_pf += 1
+            except Exception:
+                pass
+        if res.get("errors") and not loaded_evtx and not loaded_pf:
+            ans = QMessageBox.question(
+                self,
+                "Yönetici Yetkisi Gerekli",
+                "Canlı System/Security EVTX ve Prefetch dosyaları standart kullanıcı yetkisiyle kilitlidir:\n"
+                + "\n".join(res["errors"][:3])
+                + "\n\nUygulamayı resmi Windows UAC yönetici yetkisiyle yeniden başlatmak ister misiniz?",
+            )
+            if ans == QMessageBox.Yes:
+                PrivilegeService.request_uac_elevation()
+        else:
+            QMessageBox.information(
+                self,
+                "Canlı Windows Artefaktları Alındı",
+                f"Toplanan canlı EVTX: {loaded_evtx}\nÇözümlenen MAM/SCCA Prefetch: {loaded_pf}",
+            )
 
     def _load_synthetic_hive(self):
         path = os.path.join("data", "sample_system_hive.hiv")

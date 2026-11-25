@@ -1,0 +1,15 @@
+{
+  "schema": "adli-bilisim-x509-sig/v1",
+  "algorithm": "RSA-PSS-SHA256 (X.509 v3)",
+  "target_filename": "adli_rapor_vak_2026_084.pdf",
+  "target_size_bytes": 48574,
+  "file_sha256": "2ac3d546525fd843d03381090b16e1e0ab04d7a61b280c1ace69c5832af0b7fe",
+  "signer_name": "Adli Bilişim Uzmanı E. Kırmızı",
+  "signer_role": "LeadInvestigator",
+  "signed_at_utc": "2026-11-25T16:30:34.344350+00:00",
+  "canonical_payload": "adli_rapor_vak_2026_084.pdf|2ac3d546525fd843d03381090b16e1e0ab04d7a61b280c1ace69c5832af0b7fe|Adli Bilişim Uzmanı E. Kırmızı|LeadInvestigator|2026-11-25T16:30:34.344350+00:00",
+  "signature_b64": "Kxz7NgcVhpIYrgAru7rIoty2XaW9M98JgjJEs5pNNPzjk3AaRWgQ0JYMbEGvtYTfxVKyFeFzERpb5Sghg10rCC4TvMBf1cL4ulwTCfFA8DWdGKqD466UUAwNKmJrjn7lupZc8afRdjZExc/dm0jfp8LpoHCeB/bHeLD/uw911B3eHCtyIBl6eL0ZCd5jREZz0Sk11tWcs0oExzTQYkkeARS/G9h1Rk+AVD9jc3vccx5ffznvZRQOqIay1DkAvF0lOVMRV13Ue5jghnzZ6WGFTdfCLzvs8uY65RMt796Vb0pZ04UvuTRP3s4o2aKKn7Rtv9iq6ClOaEloKXCbjbHFSA==",
+  "cert_subject": "CN=Adli Bilisim Inceleme Laboratuvari,O=Adli Bilisim DFIR Lab,C=TR",
+  "cert_fingerprint_sha256": "29e5f151b0b53cd758eb1dd99501a8dd3b7d3e71667fd7b94bc45687809edb4d",
+  "certificate_pem": "-----BEGIN CERTIFICATE-----\nMIIDUjCCAjqgAwIBAgIUWO9LKc+xCNY0JWqiheDKq45ZFjwwDQYJKoZIhvcNAQEL\nBQAwWjELMAkGA1UEBhMCVFIxHjAcBgNVBAoMFUFkbGkgQmlsaXNpbSBERklSIExh\nYjErMCkGA1UEAwwiQWRsaSBCaWxpc2ltIEluY2VsZW1lIExhYm9yYXR1dmFyaTAe\nFw0yNjExMjUxNjI5MzRaFw0yOTExMjQxNjMwMzRaMFoxCzAJBgNVBAYTAlRSMR4w\nHAYDVQQKDBVBZGxpIEJpbGlzaW0gREZJUiBMYWIxKzApBgNVBAMMIkFkbGkgQmls\naXNpbSBJbmNlbGVtZSBMYWJvcmF0dXZhcmkwggEiMA0GCSqGSIb3DQEBAQUAA4IB\nDwAwggEKAoIBAQCpTmxpF41iHchBdtL9K+vvbU6oJwGSuS8NM2hJzQLknsiSnIZG\nbnhcpXOLerYMGQT4rKsecz0zMVqncKDMS2eG++eimSyBfXQW2nD81yHYjm8ZKMgl\nkbOUfk1wwpXs3OdDJBIRTF3vd/B1BVm8VS80IvS38AN4fUsARPyxk+2BqQG2gtBZ\nuuYOmyZRFqHj7gASy+BJbc7iHEncDETlZnEEqxxpgCPel4Pqk1Iv3PxmQx46Eddu\nNikrJG72iGtpSBVJXFnxijD1b/Hu+oPYXEsycev4YUO/aOjizzc2Mx4Rv3ompwSQ\njloHgkRfayZ7wfY+SYT7u5/6suRJMU+eqXahAgMBAAGjEDAOMAwGA1UdEwEB/wQC\nMAAwDQYJKoZIhvcNAQELBQADggEBAFVObldbOBRJzoq5IY7717ZVjeBYErN11S3Z\nc8xf0hxv39kigryGxTUSRvh3jbPItIuD/Xih9CJzfh4/cGErNIawW6oJJ3pXP6LQ\naE0xzS6uDeMYCztoBvmFsHKqO82+ixLDmmp+OoaVdeIur8vOf0EAlQehEt4T7aFF\nzsoSBxEZnFRdMi3f3PkbhkipBZtpINIZexT7H04JLzMVOV39oqsJC0QDM2IPXN6H\nOL/Ct6OM67MX3IIXug1Ir3GfiJFM+HerVR7nkwm+NCME45TRuWBY9fsWSrzMHHwr\nvkJrexDI2CTlqNG/+ceXJ+mashB77X48I1PT0EWlAmb21EfQCGE=\n-----END CERTIFICATE-----\n"
+}

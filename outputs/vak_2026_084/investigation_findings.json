@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-11-25T16:12:57.921673Z",
+  "generated_utc": "2026-11-25T16:30:32.113699Z",
   "case_number": "VAK-2026-084",
   "part_a_host_windows_verification": {
     "disk_image_sha256_integrity_service": "5cb9d12cb338c6a1ce48456df2f71a5218a8ee276cdc56faece12ed5aa166bc1",
@@ -20,7 +20,7 @@
         "serial": "E0D55EA57410E9B159D80011&0"
       }
     ],
-    "live_windows_processes_count": 222
+    "live_windows_processes_count": 228
   },
   "part_b_suspect_case_findings": {
     "disk_ntfs": {
@@ -105,14 +105,37 @@
     "correlation_graph": {
       "nodes": 12,
       "edges": 15
+    },
+    "v2_field_acquisition": {
+      "source": "examples/suspect_pc_case\\suspect_usb_disk.dd",
+      "acquired_image": "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\acquired_suspect_disk.dd",
+      "bytes_acquired": 327680,
+      "post_verification_matched": true,
+      "storage_targets_enumerated": 5
+    },
+    "v2_x509_report_signing": {
+      "algorithm": "RSA-PSS-SHA256 (X.509 v3)",
+      "cert_fingerprint_sha256": "29e5f151b0b53cd758eb1dd99501a8dd3b7d3e71667fd7b94bc45687809edb4d",
+      "pdf_verified_valid": true,
+      "pdf_sig_path": "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\adli_rapor_vak_2026_084.pdf.sig.json",
+      "html_sig_path": "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\adli_rapor_vak_2026_084.html.sig.json"
+    },
+    "v2_rbac_and_privilege": {
+      "rbac_users_count": 4,
+      "is_admin": false,
+      "wevtutil_available": true
     }
   },
   "exported_deliverables": [
     "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\investigation_findings.json",
     "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\adli_rapor_vak_2026_084.html",
+    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\adli_rapor_vak_2026_084.html.sig.json",
     "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\adli_rapor_vak_2026_084.pdf",
+    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\adli_rapor_vak_2026_084.pdf.sig.json",
     "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\vak_2026_084_case_uco.json",
     "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\vak_2026_084_timeline.jsonl",
-    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\vak_2026_084_bodyfile.txt"
+    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\vak_2026_084_bodyfile.txt",
+    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\acquired_suspect_disk.dd",
+    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\acquired_suspect_disk.dd.acquisition.json"
   ]
 }

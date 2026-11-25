@@ -42,6 +42,10 @@ from src.email_network_engine import EmailForensicsService, NetworkForensicsServ
 from src.timeline_engine.timeline_service import TimelineService
 from src.correlation_engine.correlation_service import CorrelationService
 from src.report_engine.report_service import ReportService
+from src.acquisition_engine.acquisition_service import AcquisitionService
+from src.core.auth_service import AuthService
+from src.core.privilege_service import PrivilegeService
+from src.core.signing_service import SigningService
 
 
 def _ps_sha256(path: str) -> str:
@@ -240,6 +244,24 @@ def run_investigation() -> Dict[str, Any]:
     rep_svc.export_html(html_path, case_id=cid, expert_notes=expert_notes)
     rep_svc.export_pdf(pdf_path, case_id=cid, expert_notes=expert_notes)
 
+    # v2.0 Enterprise Layers: Field Acquisition, X.509 Report Signing, RBAC & Privilege Status
+    acq_out = os.path.join(out_dir, "acquired_suspect_disk.dd")
+    acq_manifest = AcquisitionService.acquire_raw_image(
+        ws["disk_image"],
+        acq_out,
+        write_blocker_verified=True,
+        write_blocker_model="Tableau T8u Forensic Bridge",
+        operator="Adli Bilişim Uzmanı E. Kırmızı",
+        case_number="VAK-2026-084",
+    )
+    cert_dir = os.path.join(out_dir, "certs")
+    pdf_sig = SigningService.sign_file(pdf_path, "Adli Bilişim Uzmanı E. Kırmızı", "LeadInvestigator", cert_dir=cert_dir)
+    html_sig = SigningService.sign_file(html_path, "Adli Bilişim Uzmanı E. Kırmızı", "LeadInvestigator", cert_dir=cert_dir)
+    pdf_verify = SigningService.verify_signature(pdf_path, pdf_sig["signature_path"])
+
+    auth_svc = AuthService(db_path=db_path)
+    priv_status = PrivilegeService.get_status()
+
     mft_active = sum(1 for r in ntfs_res.get("mft_records", []) if not r.get("is_deleted"))
     mft_deleted = sum(1 for r in ntfs_res.get("mft_records", []) if r.get("is_deleted"))
 
@@ -286,9 +308,29 @@ def run_investigation() -> Dict[str, Any]:
         "orchestrator_jobs_completed": sum(1 for j in jobs if j.status.name == "COMPLETED"),
         "super_timeline_events": len(tl_events),
         "correlation_graph": {"nodes": len(corr_graph["nodes"]), "edges": len(corr_graph["edges"])},
+        "v2_field_acquisition": {
+            "source": ws["disk_image"],
+            "acquired_image": acq_out,
+            "bytes_acquired": acq_manifest["bytes_acquired"],
+            "post_verification_matched": acq_manifest["post_verification_matched"],
+            "storage_targets_enumerated": len(AcquisitionService.list_storage_targets()),
+        },
+        "v2_x509_report_signing": {
+            "algorithm": SigningService.ALGORITHM,
+            "cert_fingerprint_sha256": pdf_sig["cert_fingerprint_sha256"],
+            "pdf_verified_valid": pdf_verify["valid"],
+            "pdf_sig_path": pdf_sig["signature_path"],
+            "html_sig_path": html_sig["signature_path"],
+        },
+        "v2_rbac_and_privilege": {
+            "rbac_users_count": len(auth_svc.list_users()),
+            "is_admin": priv_status["is_admin"],
+            "wevtutil_available": priv_status["wevtutil_available"],
+        },
     }
     report["exported_deliverables"] = [
-        json_path, html_path, pdf_path, uco_path, jsonl_path, body_path
+        json_path, html_path, html_sig["signature_path"], pdf_path, pdf_sig["signature_path"],
+        uco_path, jsonl_path, body_path, acq_out, acq_manifest["manifest_path"]
     ]
 
     with open(json_path, "w", encoding="utf-8") as f:

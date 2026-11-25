@@ -6,7 +6,7 @@
 0|{"filename": "musteri_export.xlsx", "size": 27, "is_deleted": false, "timestomping_suspect": false, "ads_streams": []}|6|----------|0|0|0|1795071600|1795071600|1795071600|1795071600
 0|{"filename": "silinen_betik.ps1", "size": 61, "is_deleted": true, "timestomping_suspect": false, "ads_streams": []}|7|----------|0|0|0|1795130100|1795130100|1795130100|1795130100
 0|Başarılı Oturum Açma (Successful Logon) / Param_0=4624 / Param_1=Microsoft-Windows-Security-Auditing / Param_2=AhmetK / Param_3=FINANS-PC04 / Microsoft-Windows-Security-AuditingAhmetKFINANS-PC04|8|----------|0|0|0|1795154112|1795154112|1795154112|1795154112
-0|SanDisk Cruzer Blade USB Device (VID_0781&PID_5567 / Seri: 4C530001250912117441)|9|----------|0|0|0|1795169577|1795169577|1795169577|1795169577
+0|SanDisk Cruzer Blade USB Device (VID_0781&PID_5567 / Seri: 4C530001250912117441)|9|----------|0|0|0|1795170632|1795170632|1795170632|1795170632
 0|{"filename": "$MFT", "size": 12288, "is_deleted": false, "timestomping_suspect": false, "ads_streams": []}|10|----------|0|0|0|1795174200|1795174200|1795174200|1795174200
 0|{"filename": ".", "size": 0, "is_deleted": false, "timestomping_suspect": false, "ads_streams": []}|11|----------|0|0|0|1795174200|1795174200|1795174200|1795174200
 0|{"filename": "Users", "size": 0, "is_deleted": false, "timestomping_suspect": false, "ads_streams": []}|12|----------|0|0|0|1795174200|1795174200|1795174200|1795174200
@@ -16,31 +16,31 @@
 0|Sisteme Yeni Servis Kuruldu / Param_0=7045 / Param_1=RemoteExecHelper / Param_2=C:\Users\Public\svchost_upd.exe / RemoteExecHelperC:\Users\Public\svchost_upd.exe|16|----------|0|0|0|1795192878|1795192878|1795192878|1795192878
 0|Başarısız Oturum Açma (Failed Logon) / Param_0=4625 / Param_1=Administrator / Param_2=192.168.10.45 / Param_3=0xC000006D / Administrator192.168.10.45m|17|----------|0|0|0|1795198364|1795198364|1795198364|1795198364
 0|Denetim Günlüğü Temizlendi (Audit Log Cleared) / Param_0=1102 / Param_1=MehmetS / Param_2=The audit log was cleared / MehmetSThe audit log was cleared|18|----------|0|0|0|1795198685|1795198685|1795198685|1795198685
-0|Kingston DataTraveler 3.0 (VID_0951&PID_1666 / Seri: 0014D1185292F9B0B71B08C7)|19|----------|0|0|0|1795327977|1795327977|1795327977|1795327977
-0|USB Rubber Ducky / BadUSB HID Keystroke Injector (VID_03EB&PID_2043 / Seri: 000000000001)|20|----------|0|0|0|1795435977|1795435977|1795435977|1795435977
-0|USB Rubber Ducky / BadUSB HID Keystroke Injector / Sürücü: -|21|----------|0|0|0|1795435977|1795435977|1795435977|1795435977
-0|USB Rubber Ducky / BadUSB HID Keystroke Injector bağlantısı kesildi.|22|----------|0|0|0|1795436877|1795436877|1795436877|1795436877
-0|Güvenlik Amiri M. Demir -> Adli Bilişim Uzmanı E. Kırmızı / Yöntem: Mühürlü Delil Torbası #TB-991|23|----------|0|0|0|1795439577|1795439577|1795439577|1795439577
-0|VAK-2026-084 numaralı soruşturma açıldı. Delil muhafaza zinciri başlatıldı.|24|----------|0|0|0|1795439577|1795439577|1795439577|1795439577
-0|EVD-2026-001 (SanDisk Cruzer) kabul edildi. SHA-256 doğrulandı.|25|----------|0|0|0|1795443177|1795443177|1795443177|1795443177
-0|Adli Bilişim Uzmanı E. Kırmızı -> Çalışma Kopyası Sunucusu (Salt Okunur) / Yöntem: RAW Bitstream İmaj (.dd)|26|----------|0|0|0|1795446777|1795446777|1795446777|1795446777
-0|SanDisk Cruzer Blade USB Device / Sürücü: E:|27|----------|0|0|0|1795518777|1795518777|1795518777|1795518777
-0|SanDisk Cruzer Blade USB Device bağlantısı kesildi.|28|----------|0|0|0|1795519677|1795519677|1795519677|1795519677
-0|Olay Yeri Müdahale Ekibi -> Adli Bilişim Uzmanı E. Kırmızı / Yöntem: Fiziksel Teslim|29|----------|0|0|0|1795525977|1795525977|1795525977|1795525977
-0|SYSTEM Registry kovanı ayrıştırıldı. 4 adet USB cihazı tespit edildi.|30|----------|0|0|0|1795525977|1795525977|1795525977|1795525977
-0|Delil Kasası #01 -> Adli Bilişim Uzmanı E. Kırmızı / Yöntem: Atola TaskForce E01|31|----------|0|0|0|1795561977|1795561977|1795561977|1795561977
-0|Samsung PSSD T7 SCSI Disk Device (VID_04E8&PID_61F5 / Seri: S5B4NX0R812345K)|32|----------|0|0|0|1795561977|1795561977|1795561977|1795561977
-0|Samsung PSSD T7 SCSI Disk Device / Sürücü: G:|33|----------|0|0|0|1795568577|1795568577|1795568577|1795568577
-0|Samsung PSSD T7 SCSI Disk Device bağlantısı kesildi.|34|----------|0|0|0|1795569057|1795569057|1795569057|1795569057
-0|Kingston DataTraveler 3.0 / Sürücü: F:|35|----------|0|0|0|1795583577|1795583577|1795583577|1795583577
-0|Kingston DataTraveler 3.0 bağlantısı kesildi.|36|----------|0|0|0|1795584177|1795584177|1795584177|1795584177
-0|VID_03EB&PID_2043 (BadUSB) anomalisi işaretlendi ve öncelikli analiz sırasına alındı.|37|----------|0|0|0|1795601577|1795601577|1795601577|1795601577
-0|Canlı sistemden 1 adet USBSTOR kaydı salt-okunur çıkarıldı.|38|----------|0|0|0|1795612378|1795612378|1795612378|1795612378
-0|suspect_usb_disk.dd -> 7 artefakt (0.0016s)|39|----------|0|0|0|1795612379|1795612379|1795612379|1795612379
-0|SYSTEM.hiv -> 1 artefakt (0.0082s)|40|----------|0|0|0|1795612379|1795612379|1795612379|1795612379
-0|Security.evtx -> 0 artefakt (0.0011s)|41|----------|0|0|0|1795612379|1795612379|1795612379|1795612379
-0|Chrome_History.sqlite -> 1 artefakt (0.0105s)|42|----------|0|0|0|1795612379|1795612379|1795612379|1795612379
-0|suspect_memory.dmp -> 1 artefakt (0.0127s)|43|----------|0|0|0|1795612379|1795612379|1795612379|1795612379
-0|tatil_fatura_ek.jpg -> 1 artefakt (0.0067s)|44|----------|0|0|0|1795612379|1795612379|1795612379|1795612379
-0|exfil_talimat.eml -> 1 artefakt (0.0062s)|45|----------|0|0|0|1795612379|1795612379|1795612379|1795612379
-0|suspect_capture.pcap -> 1 artefakt (0.0007s)|46|----------|0|0|0|1795612379|1795612379|1795612379|1795612379
+0|Kingston DataTraveler 3.0 (VID_0951&PID_1666 / Seri: 0014D1185292F9B0B71B08C7)|19|----------|0|0|0|1795329032|1795329032|1795329032|1795329032
+0|USB Rubber Ducky / BadUSB HID Keystroke Injector (VID_03EB&PID_2043 / Seri: 000000000001)|20|----------|0|0|0|1795437032|1795437032|1795437032|1795437032
+0|USB Rubber Ducky / BadUSB HID Keystroke Injector / Sürücü: -|21|----------|0|0|0|1795437032|1795437032|1795437032|1795437032
+0|USB Rubber Ducky / BadUSB HID Keystroke Injector bağlantısı kesildi.|22|----------|0|0|0|1795437932|1795437932|1795437932|1795437932
+0|Güvenlik Amiri M. Demir -> Adli Bilişim Uzmanı E. Kırmızı / Yöntem: Mühürlü Delil Torbası #TB-991|23|----------|0|0|0|1795440632|1795440632|1795440632|1795440632
+0|VAK-2026-084 numaralı soruşturma açıldı. Delil muhafaza zinciri başlatıldı.|24|----------|0|0|0|1795440632|1795440632|1795440632|1795440632
+0|EVD-2026-001 (SanDisk Cruzer) kabul edildi. SHA-256 doğrulandı.|25|----------|0|0|0|1795444232|1795444232|1795444232|1795444232
+0|Adli Bilişim Uzmanı E. Kırmızı -> Çalışma Kopyası Sunucusu (Salt Okunur) / Yöntem: RAW Bitstream İmaj (.dd)|26|----------|0|0|0|1795447832|1795447832|1795447832|1795447832
+0|SanDisk Cruzer Blade USB Device / Sürücü: E:|27|----------|0|0|0|1795519832|1795519832|1795519832|1795519832
+0|SanDisk Cruzer Blade USB Device bağlantısı kesildi.|28|----------|0|0|0|1795520732|1795520732|1795520732|1795520732
+0|Olay Yeri Müdahale Ekibi -> Adli Bilişim Uzmanı E. Kırmızı / Yöntem: Fiziksel Teslim|29|----------|0|0|0|1795527032|1795527032|1795527032|1795527032
+0|SYSTEM Registry kovanı ayrıştırıldı. 4 adet USB cihazı tespit edildi.|30|----------|0|0|0|1795527032|1795527032|1795527032|1795527032
+0|Samsung PSSD T7 SCSI Disk Device (VID_04E8&PID_61F5 / Seri: S5B4NX0R812345K)|31|----------|0|0|0|1795563032|1795563032|1795563032|1795563032
+0|Delil Kasası #01 -> Adli Bilişim Uzmanı E. Kırmızı / Yöntem: Atola TaskForce E01|32|----------|0|0|0|1795563032|1795563032|1795563032|1795563032
+0|Samsung PSSD T7 SCSI Disk Device / Sürücü: G:|33|----------|0|0|0|1795569632|1795569632|1795569632|1795569632
+0|Samsung PSSD T7 SCSI Disk Device bağlantısı kesildi.|34|----------|0|0|0|1795570112|1795570112|1795570112|1795570112
+0|Kingston DataTraveler 3.0 / Sürücü: F:|35|----------|0|0|0|1795584632|1795584632|1795584632|1795584632
+0|Kingston DataTraveler 3.0 bağlantısı kesildi.|36|----------|0|0|0|1795585232|1795585232|1795585232|1795585232
+0|VID_03EB&PID_2043 (BadUSB) anomalisi işaretlendi ve öncelikli analiz sırasına alındı.|37|----------|0|0|0|1795602632|1795602632|1795602632|1795602632
+0|Canlı sistemden 1 adet USBSTOR kaydı salt-okunur çıkarıldı.|38|----------|0|0|0|1795613432|1795613432|1795613432|1795613432
+0|suspect_usb_disk.dd -> 7 artefakt (0.0015s)|39|----------|0|0|0|1795613433|1795613433|1795613433|1795613433
+0|SYSTEM.hiv -> 1 artefakt (0.0071s)|40|----------|0|0|0|1795613433|1795613433|1795613433|1795613433
+0|Security.evtx -> 0 artefakt (0.0008s)|41|----------|0|0|0|1795613433|1795613433|1795613433|1795613433
+0|Chrome_History.sqlite -> 1 artefakt (0.0103s)|42|----------|0|0|0|1795613433|1795613433|1795613433|1795613433
+0|suspect_memory.dmp -> 1 artefakt (0.0129s)|43|----------|0|0|0|1795613433|1795613433|1795613433|1795613433
+0|tatil_fatura_ek.jpg -> 1 artefakt (0.0055s)|44|----------|0|0|0|1795613433|1795613433|1795613433|1795613433
+0|exfil_talimat.eml -> 1 artefakt (0.0056s)|45|----------|0|0|0|1795613433|1795613433|1795613433|1795613433
+0|suspect_capture.pcap -> 1 artefakt (0.001s)|46|----------|0|0|0|1795613433|1795613433|1795613433|1795613433

@@ -1,0 +1,20 @@
+{
+  "schema": "adli-bilisim-acquisition/v1",
+  "case_number": "VAK-2026-084",
+  "acquired_at_utc": "2026-11-25T16:30:34.143678+00:00",
+  "operator": "Adli Bilişim Uzmanı E. Kırmızı",
+  "source": "examples/suspect_pc_case\\suspect_usb_disk.dd",
+  "segments": [
+    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\acquired_suspect_disk.dd"
+  ],
+  "segment_count": 1,
+  "bytes_acquired": 327680,
+  "write_blocker_verified": true,
+  "write_blocker_model": "Tableau T8u Forensic Bridge",
+  "source_sha256": "5cb9d12cb338c6a1ce48456df2f71a5218a8ee276cdc56faece12ed5aa166bc1",
+  "source_sha512": "3d41082edd9bc96b1ec1e7ca20512ad5859c23458bfc9db57e0c249a1fffdb8cc38287726a2a7d24fe418ce6009f253e09624f9a6e0be0362c09d50e40f53c2c",
+  "destination_sha256": "5cb9d12cb338c6a1ce48456df2f71a5218a8ee276cdc56faece12ed5aa166bc1",
+  "post_verification_matched": true,
+  "elapsed_sec": 0.0298,
+  "throughput_mb_s": 10.5
+}

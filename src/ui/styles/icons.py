@@ -12,12 +12,24 @@ def get_asset_path(filename: str) -> str:
     return os.path.join(ASSETS_DIR, filename)
 
 
+def get_app_icon() -> QIcon:
+    """Return multi-resolution Windows .ico (falling back to app_icon.png / brand_shield.png)."""
+    for fname in ("app_icon.ico", "app_icon.png", "brand_shield.png"):
+        p = get_asset_path(fname)
+        if os.path.isfile(p):
+            ic = QIcon(p)
+            if not ic.isNull():
+                return ic
+    return QIcon()
+
+
 def get_brand_pixmap(size: int = 28) -> QPixmap:
-    p = get_asset_path("brand_shield.png")
-    if os.path.isfile(p):
-        pix = QPixmap(p)
-        if not pix.isNull():
-            return pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+    for fname in ("app_icon.png", "brand_shield.png"):
+        p = get_asset_path(fname)
+        if os.path.isfile(p):
+            pix = QPixmap(p)
+            if not pix.isNull():
+                return pix.scaled(size, size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
     return QPixmap()
 
 

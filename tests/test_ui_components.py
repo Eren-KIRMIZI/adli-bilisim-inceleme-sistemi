@@ -55,10 +55,13 @@ def test_metadata_panel(qapp):
 
 
 def test_brand_assets_svg_icons_and_collapsible_sidebar(qapp):
-    """Verify Gemini Banana assets, SVG navigation icons, and collapsible sidebar toggle."""
-    from src.ui.styles.icons import get_brand_pixmap, get_banner_pixmap, render_svg_icon
+    """Verify Gemini Banana assets, multi-res .ico app icon, SVG navigation icons, and collapsible sidebar toggle."""
+    from src.ui.styles.icons import get_app_icon, get_brand_pixmap, get_banner_pixmap, render_svg_icon
     from src.ui.shell.sidebar import Sidebar
 
+    app_ico = get_app_icon()
+    assert not app_ico.isNull()
+    assert len(app_ico.availableSizes()) >= 5
     assert not get_brand_pixmap(32).isNull()
     assert not get_banner_pixmap("light").isNull()
     assert not get_banner_pixmap("dark").isNull()

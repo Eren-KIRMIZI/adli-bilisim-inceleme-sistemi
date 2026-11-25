@@ -11,7 +11,7 @@ from src.ui.shell.topbar import Topbar
 from src.ui.shell.sidebar import Sidebar
 from src.ui.shell.statusbar import Statusbar
 from src.ui.styles.tokens import build_qss, build_palette
-from src.ui.styles.icons import get_asset_path
+from src.ui.styles.icons import get_app_icon
 from src.case_engine.case_service import CaseService
 from src.evidence_engine.evidence_service import EvidenceService
 from src.core.recovery import RecoveryManager
@@ -21,7 +21,7 @@ class MainWindow(QMainWindow):
     def __init__(self, db_path: str = "data/forensics.db", data_dir: str = "data"):
         super().__init__()
         self.setWindowTitle("Adli Bilişim İnceleme Sistemi (Digital Forensics Suite)")
-        self.setWindowIcon(QIcon(get_asset_path("brand_shield.png")))
+        self.setWindowIcon(get_app_icon())
         self.resize(1400, 880)
         self.setMinimumSize(1100, 700)
 

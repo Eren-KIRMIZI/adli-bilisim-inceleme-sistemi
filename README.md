@@ -26,10 +26,6 @@ https://github.com/user-attachments/assets/07a73ba5-f65a-42e4-b00d-24e0be05194b
    ![Dijital İmza Doğrulandı ve Kişisel Şifre Ekranı](docs/screenshots/00b_usb_login_verified.png)
 4. **Güvenli Oturum Başlatılır:** Her iki doğrulama da sağlandığında ana adli inceleme konsolu açılır; USB belleğin oturum öncesi çıkarılması durumunda şifre alanı otomatik olarak tekrar kilitlenir. *(İlk kez çalıştıranlar için kayıtlı anahtar yoksa sol alt köşedeki **İlk USB Anahtarı Kurulumu** sihirbazıyla kendi USB belleğinize Ed25519 anahtar çifti tanımlayabilirsiniz.)*
 
-### 🎬 Giriş & Sistem Kullanım Videosu
-> *Video Demo Alanı:* Buraya USB anahtarını takarak giriş yapma ve modül kullanım demosunu içeren videoyu ekleyebilirsiniz.
-<!-- VIDEO_DEMO_PLACEHOLDER -->
-
 ---
 
 ## Gerçek Hayatta Ne Bulur ve Nasıl Kullanılır? (Örnek Olay Senaryosu)

@@ -92,3 +92,49 @@ class TriageCollector:
                     "manifest": res["manifest_path"],
                 }
         return summary
+
+    @staticmethod
+    def export_remote_triage_script(output_ps1_path: str) -> str:
+        """Generate a Velociraptor/KAPE-style read-only PowerShell remote triage collector script."""
+        script = r"""<#
+.SYNOPSIS
+  Adli Bilisim Inceleme Sistemi - Salt-Okunur Uzak Uc Nokta Triyaj Toplayicisi (v3.0)
+  Velociraptor / KAPE tarzinda uzak Windows istemciden delil kopyasi ve SHA-256 manifesti uretir.
+#>
+param(
+  [string]$OutDir = "$env:TEMP\DFIR_Triage_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+)
+$ErrorActionPreference = 'SilentlyContinue'
+New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
+$Manifest = @()
+
+function Copy-ForensicItem([string]$Src, [string]$Sub) {
+  if (Test-Path $Src) {
+    $DstDir = Join-Path $OutDir $Sub
+    New-Item -ItemType Directory -Force -Path $DstDir | Out-Null
+    Copy-Item -Path $Src -Destination $DstDir -Force
+    Get-ChildItem $DstDir -File | ForEach-Object {
+      $h = (Get-FileHash -Algorithm SHA256 $_.FullName).Hash
+      $script:Manifest += [PSCustomObject]@{ File = $_.Name; Category = $Sub; SHA256 = $h; Size = $_.Length }
+    }
+  }
+}
+
+Copy-ForensicItem "$env:SystemRoot\Prefetch\*.pf" "Prefetch"
+Copy-ForensicItem "$env:SystemRoot\System32\winevt\Logs\Security.evtx" "EventLogs"
+Copy-ForensicItem "$env:SystemRoot\System32\winevt\Logs\System.evtx" "EventLogs"
+Copy-ForensicItem "$env:SystemRoot\System32\sru\SRUDB.dat" "SRUM"
+Copy-ForensicItem "$env:APPDATA\Microsoft\Windows\Recent\*.lnk" "RecentLNK"
+Copy-ForensicItem "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\History" "Browser_Chrome"
+Copy-ForensicItem "$env:LOCALAPPDATA\Microsoft\Edge\User Data\Default\History" "Browser_Edge"
+Copy-ForensicItem "$env:SystemRoot\System32\drivers\etc\hosts" "Network"
+
+$Manifest | ConvertTo-Json -Depth 3 | Out-File -Encoding UTF8 (Join-Path $OutDir "remote_triage_manifest.json")
+$ZipPath = "$OutDir.zip"
+Compress-Archive -Path "$OutDir\*" -DestinationPath $ZipPath -Force
+Write-Output "DFIR Remote Triage Paketi Hazir: $ZipPath"
+"""
+        os.makedirs(os.path.dirname(os.path.abspath(output_ps1_path)) or ".", exist_ok=True)
+        with open(output_ps1_path, "w", encoding="utf-8") as f:
+            f.write(script)
+        return output_ps1_path

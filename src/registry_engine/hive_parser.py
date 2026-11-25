@@ -446,6 +446,19 @@ class RegistryHiveParser:
                 walk_special(ch)
 
         walk_special(root)
+
+        # BAM / DAM offline entries
+        from src.registry_engine.extended_windows_artifacts import ExtendedWindowsArtifacts
+        for bm in ExtendedWindowsArtifacts.parse_bam_dam_from_hive(parsed_hive):
+            extracted.append({
+                "Durum": "İnceleniyor" if any(k in bm["executable"].lower() for k in ("powershell", "rclone", "temp", "appdata")) else "Doğrulandı",
+                "Kategori": bm["artifact_type"],
+                "Ad": os.path.basename(bm["executable"]) or bm["executable"],
+                "Değer / Yol": f"{bm['executable']} (SID: {bm['sid']})",
+                "Zaman / Sayaç": bm.get("executed_utc") or "-",
+                "Kaynak": bm["source"],
+                "_raw": bm["executable"].encode("utf-8", "replace"),
+            })
         return extracted
 
     def read_live_windows_triage(self) -> Dict[str, Any]:
@@ -592,6 +605,24 @@ class RegistryHiveParser:
                             "Kaynak": f"HKLM\\{sc_key}",
                             "Durum": "Doğrulandı",
                         })
+        except Exception:
+            pass
+
+        # 7. Live BAM / DAM (HKLM)
+        try:
+            from src.registry_engine.extended_windows_artifacts import ExtendedWindowsArtifacts
+            bam_rows = ExtendedWindowsArtifacts.parse_bam_dam_from_live_winreg()
+            if bam_rows:
+                categories["BAM / DAM (Son Çalıştırılanlar)"] = [
+                    {
+                        "Kategori": b["artifact_type"],
+                        "Ad": os.path.basename(b["executable"]) or b["executable"],
+                        "Değer / Yol": f"{b['executable']} (Son: {b.get('executed_utc') or '-'})",
+                        "Kaynak": b["source"],
+                        "Durum": "İnceleniyor" if any(x in b["executable"].lower() for x in ("powershell", "temp", "appdata")) else "Doğrulandı",
+                    }
+                    for b in bam_rows[:120]
+                ]
         except Exception:
             pass
 

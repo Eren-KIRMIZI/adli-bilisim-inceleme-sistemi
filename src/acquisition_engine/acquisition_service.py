@@ -241,3 +241,89 @@ class AcquisitionService:
             json.dump(manifest, mf, indent=2, ensure_ascii=False)
         manifest["manifest_path"] = manifest_path
         return manifest
+
+    @staticmethod
+    def check_winpmem_availability() -> Dict[str, Any]:
+        """Detect optional external WinPMEM physical RAM acquirer binary in PATH or tools/."""
+        import shutil
+        for cand in ("winpmem.exe", "winpmem_mini_x64.exe", "go-winpmem.exe"):
+            found = shutil.which(cand) or (cand if os.path.isfile(cand) else None)
+            if found:
+                return {"available": True, "binary": found}
+        return {
+            "available": False,
+            "binary": None,
+            "guidance": "Tam fiziksel RAM dökümü için harici WinPMEM yürütücüsü gerekir; seçili süreç dökümü için MiniDumpWriteDump doğrudan kullanılabilir.",
+        }
+
+    @staticmethod
+    def acquire_process_memory_dump(
+        pid: int,
+        output_dmp_path: str,
+        operator: str = "Adli Bilişim Uzmanı",
+        case_number: str = "VAK-2026-084",
+    ) -> Dict[str, Any]:
+        """Acquire a read-only Windows process memory dump (.dmp) via dbghelp.dll MiniDumpWriteDump + SHA-256/512."""
+        if os.name != "nt" or not hasattr(ctypes, "windll"):
+            raise OSError("Canlı süreç MiniDumpWriteDump yalnızca Windows üzerinde desteklenir.")
+        if int(pid) <= 0:
+            raise ValueError("Geçerli bir PID (>0) belirtilmelidir.")
+
+        PROCESS_QUERY_INFORMATION = 0x0400
+        PROCESS_VM_READ = 0x0010
+        MiniDumpWithFullMemory = 0x00000002
+        GENERIC_WRITE = 0x40000000
+        CREATE_ALWAYS = 2
+        FILE_ATTRIBUTE_NORMAL = 0x80
+
+        k32 = ctypes.windll.kernel32
+        dbghelp = ctypes.windll.dbghelp
+
+        h_proc = k32.OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, False, int(pid))
+        if not h_proc:
+            raise PermissionError(f"PID={pid} süreci salt-okunur açılamadı (yetki veya geçersiz PID).")
+
+        os.makedirs(os.path.dirname(os.path.abspath(output_dmp_path)) or ".", exist_ok=True)
+        h_file = k32.CreateFileW(output_dmp_path, GENERIC_WRITE, 0, None, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, None)
+        if not h_file or h_file == -1:
+            k32.CloseHandle(h_proc)
+            raise OSError(f"Çıktı döküm dosyası oluşturulamadı: {output_dmp_path}")
+
+        t0 = time.perf_counter()
+        try:
+            ok = dbghelp.MiniDumpWriteDump(h_proc, int(pid), h_file, MiniDumpWithFullMemory, None, None, None)
+            if not ok:
+                raise OSError(f"MiniDumpWriteDump başarısız oldu (Win32 Hata={k32.GetLastError()}).")
+        finally:
+            k32.CloseHandle(h_file)
+            k32.CloseHandle(h_proc)
+
+        h256 = hashlib.sha256()
+        h512 = hashlib.sha512()
+        with open(output_dmp_path, "rb") as f:
+            while True:
+                chunk = f.read(65536)
+                if not chunk:
+                    break
+                h256.update(chunk)
+                h512.update(chunk)
+
+        size_b = os.path.getsize(output_dmp_path)
+        manifest = {
+            "schema": "adli-bilisim-ram-acquisition/v1",
+            "case_number": case_number,
+            "acquired_at_utc": datetime.now(timezone.utc).isoformat(),
+            "operator": operator,
+            "target_pid": int(pid),
+            "output_path": output_dmp_path,
+            "bytes_acquired": size_b,
+            "source_sha256": h256.hexdigest(),
+            "source_sha512": h512.hexdigest(),
+            "method": "Win32 MiniDumpWriteDump (MiniDumpWithFullMemory)",
+            "elapsed_sec": round(time.perf_counter() - t0, 4),
+        }
+        manifest_path = output_dmp_path + ".acquisition.json"
+        with open(manifest_path, "w", encoding="utf-8") as mf:
+            json.dump(manifest, mf, indent=2, ensure_ascii=False)
+        manifest["manifest_path"] = manifest_path
+        return manifest

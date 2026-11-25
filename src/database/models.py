@@ -144,6 +144,19 @@ class UserAccount(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class ArtifactBookmark(Base):
+    __tablename__ = "artifact_bookmarks"
+    id = Column(Integer, primary_key=True)
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    tag = Column(String(32), nullable=False, default="Şüpheli")  # Kanıt, Şüpheli, Kritik IOC, Yanlış Pozitif
+    source_module = Column(String(64), nullable=False)
+    item_label = Column(String(255), nullable=False)
+    item_reference = Column(String(512), nullable=True)
+    analyst_note = Column(Text, nullable=True)
+    analyst_name = Column(String(128), nullable=False, default="Adli Bilişim Uzmanı")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 def _compute_audit_entry_hash(
     prev_hash: str,
     case_id,

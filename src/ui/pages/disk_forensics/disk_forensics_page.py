@@ -79,6 +79,14 @@ class DiskForensicsPage(QWidget):
         usn_btn.clicked.connect(self._open_usn_dialog)
         toolbar.addWidget(usn_btn)
 
+        vss_btn = QPushButton("🕰️ VSS / $LogFile")
+        vss_btn.clicked.connect(self._open_vss_logfile_dialog)
+        toolbar.addWidget(vss_btn)
+
+        fve_btn = QPushButton("🔐 BitLocker FVE")
+        fve_btn.clicked.connect(self._inspect_or_decrypt_bitlocker)
+        toolbar.addWidget(fve_btn)
+
         main_layout.addLayout(toolbar)
 
         # 3. Vertical Splitter: Top 3-column workspace + Bottom Hex Viewer
@@ -173,9 +181,9 @@ class DiskForensicsPage(QWidget):
     def _open_image_dialog(self):
         fp, _ = QFileDialog.getOpenFileName(
             self,
-            "Disk İmajı veya $MFT Dosyası Seç (Salt Okunur)",
+            "Disk İmajı / Sanal Disk / Konteyner veya $MFT Seç (Salt Okunur)",
             "",
-            "Adli İmajlar (*.dd *.raw *.img *.e01 $MFT);;Tüm Dosyalar (*.*)",
+            "Adli & Sanal İmajlar (*.dd *.raw *.img *.e01 *.vhd *.vhdx *.qcow2 *.vmdk *.aff4 *.ad1 *.l01 $MFT);;Tüm Dosyalar (*.*)",
         )
         if fp:
             self.load_image_async(fp)
@@ -241,22 +249,27 @@ class DiskForensicsPage(QWidget):
         carve_node.setData(0, Qt.UserRole, {"kind": "carving"})
         self.tree.expandAll()
 
-        # Build MFT row records
+        # Build MFT / Filesystem row records
+        def _fmt_ts(val) -> str:
+            if not val:
+                return "-"
+            return val.strftime("%Y-%m-%d %H:%M:%S") if hasattr(val, "strftime") else str(val)
+
         self._all_file_rows = []
         for rec in ins.get("mft_records", []):
-            status_str = "Şüpheli / Silinmiş" if rec["is_deleted"] else "Normal (Aktif)"
+            status_str = "Şüpheli / Silinmiş" if rec.get("is_deleted") else "Normal (Aktif)"
             self._all_file_rows.append({
                 "Durum": status_str,
-                "Dosya Adı": rec.get("full_path") or rec["filename"],
-                "MFT #": rec["record_index"],
-                "Boyut": f"{rec['size']:,} B",
-                "İmza / Tür": rec["signature_type"],
-                "Oluşturulma (UTC)": rec["created"].strftime("%Y-%m-%d %H:%M:%S") if rec["created"] else "-",
-                "Değiştirilme (UTC)": rec["modified"].strftime("%Y-%m-%d %H:%M:%S") if rec["modified"] else "-",
+                "Dosya Adı": rec.get("full_path") or rec.get("filename", "-"),
+                "MFT #": rec.get("record_index", "-"),
+                "Boyut": f"{rec.get('size', 0):,} B",
+                "İmza / Tür": rec.get("signature_type") or rec.get("signature", "-"),
+                "Oluşturulma (UTC)": _fmt_ts(rec.get("created")),
+                "Değiştirilme (UTC)": _fmt_ts(rec.get("modified")),
                 "_raw": rec,
             })
 
-        self.records_badge.set_status(f"{len(self._all_file_rows)} MFT Kaydı", "info")
+        self.records_badge.set_status(f"{len(self._all_file_rows)} Kayıt", "info")
         self._apply_filters()
 
         if ins.get("header_bytes"):
@@ -446,4 +459,50 @@ class DiskForensicsPage(QWidget):
                     preview = rf.read(1024)
             except Exception:
                 preview = b""
-        self.hex_viewer.load_bytes(preview, base_offset=rec["image_offset"])
+        self.hex_viewer.load_bytes(preview, base_offset=rec.get("image_offset", 0))
+
+    def _open_vss_logfile_dialog(self):
+        from src.ntfs_engine.bitlocker_vss_logfile import VssParser, NtfsLogFileParser
+        fp, _ = QFileDialog.getOpenFileName(
+            self, "NTFS $LogFile veya VSS İçeren İmaj Seç", "", "Tüm Dosyalar (*.*)"
+        )
+        if not fp:
+            return
+        if os.path.basename(fp).lower().startswith("$logfile") or fp.lower().endswith(".logfile"):
+            res = NtfsLogFileParser.parse_logfile(fp)
+            lines = [f"NTFS $LogFile RSTR Başlıkları: {len(res['restarts'])} | İşlem Kayıtları: {len(res['records'])}"]
+            for r in res["records"][:30]:
+                lines.append(f"LSN={r['lsn']} | Tx={r['transaction_id']} | Redo={r['redo_op']} | Undo={r['undo_op']}")
+            self.meta_text.setPlainText("\n".join(lines))
+        else:
+            snaps = VssParser.scan_vss_snapshots(fp)
+            lines = [f"VSS Snapshot Taraması ({os.path.basename(fp)}): {len(snaps)} kayıt"]
+            for s in snaps[:30]:
+                lines.append(f"{s['offset_hex']} | {s['record_type']} | Tarih: {s.get('created_utc') or '-'}")
+            self.meta_text.setPlainText("\n".join(lines))
+
+    def _inspect_or_decrypt_bitlocker(self):
+        from PySide6.QtWidgets import QInputDialog
+        from src.ntfs_engine.bitlocker_vss_logfile import BitLockerService
+        fp = self._current_image_path
+        if not fp or not os.path.isfile(fp):
+            fp, _ = QFileDialog.getOpenFileName(self, "BitLocker (-FVE-FS-) İmajı Seç", "", "İmajlar (*.dd *.raw *.img);;Tüm Dosyalar (*.*)")
+        if not fp:
+            return
+        try:
+            info = BitLockerService.inspect_fve_header(fp)
+            msg = (
+                f"BITLOCKER FVE BAŞLIĞI\nİmza: {info['signature']}\n"
+                f"GUID: {info['volume_guid']}\nMetadata Offset: 0x{info['metadata_offset']:X}\n"
+                f"Koruyucular: {', '.join(info['protectors'])}"
+            )
+            self.meta_text.setPlainText(msg)
+            fvek_hex, ok = QInputDialog.getText(
+                self, "BitLocker FVEK ile Çöz (Opsiyonel)", "32/64 baytlık FVEK Hex Anahtarı girin (boşsa sadece incelenir):"
+            )
+            if ok and fvek_hex.strip():
+                out_p = fp + ".decrypted.dd"
+                BitLockerService.decrypt_volume_with_fvek(fp, out_p, bytes.fromhex(fvek_hex.strip()))
+                self.load_image(out_p)
+        except Exception as e:
+            QMessageBox.information(self, "BitLocker Bilgisi", str(e))

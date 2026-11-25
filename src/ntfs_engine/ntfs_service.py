@@ -137,37 +137,70 @@ class DiskForensicsEngine:
     PARSER_VERSION = "2.0.0"
 
     def inspect_image(self, image_path: str, max_mft_records: int = 32768) -> Dict[str, Any]:
-        """Inspect a disk image (RAW, E01 via EwfImageStream, Volume, or $MFT) in strict read-only mode."""
+        """Inspect a disk image (RAW, E01, VHD/VHDX, QCOW2, VMDK, AFF4, AD1/L01, or $MFT) read-only."""
         if not os.path.isfile(image_path):
             raise FileNotFoundError(f"İmaj dosyası bulunamadı: {image_path}")
 
         with open(image_path, "rb") as f:
             head = f.read(min(os.path.getsize(image_path), 1024 * 64))
 
-        # Check EnCase E01 signature -> open via pure-Python EwfImageStream if available
-        if head.startswith(b"EVF\x09\x0d\x0a\xff\x00"):
-            try:
-                from src.ntfs_engine.ewf_reader import EwfImageStream
-                ewf = EwfImageStream(image_path)
-                res = self._inspect_stream(
-                    ewf,
-                    image_path=image_path,
-                    image_size=ewf.total_size,
-                    fmt_label="E01 (EnCase EWF - Çözümlendi)",
-                    max_mft_records=max_mft_records,
-                )
-                if ewf.warnings:
-                    res["warnings"] = list(ewf.warnings) + res.get("warnings", [])
-                return res
-            except Exception as e:
+        # Logical forensic containers (.AD1 / .L01)
+        ext = os.path.splitext(image_path)[1].lower()
+        if head.startswith(b"ADSEGMENTEDFILE") or head.startswith(b"ADLOGICALIMAGE") or ext == ".ad1":
+            from src.ntfs_engine.container_streams import LogicalContainerParser
+            ad1 = LogicalContainerParser.inspect_ad1(image_path)
+            return {
+                "image_path": image_path,
+                "image_name": os.path.basename(image_path),
+                "image_size": os.path.getsize(image_path),
+                "format": ad1["format"],
+                "partitions": [{"index": 1, "scheme": "Logical", "type_name": "AD1 Logical Container", "bootable": False, "start_lba": 0, "start_offset": 0, "sector_count": 0, "size_bytes": os.path.getsize(image_path), "filesystem": "AD1", "vbr_info": {}}],
+                "mft_records": ad1["entries"],
+                "warnings": ad1["warnings"],
+                "header_bytes": head[:4096],
+            }
+        if head.startswith(b"LVF\x09\x0d\x0a\xff\x00") or ext == ".l01":
+            from src.ntfs_engine.container_streams import LogicalContainerParser
+            l01 = LogicalContainerParser.inspect_l01(image_path)
+            return {
+                "image_path": image_path,
+                "image_name": os.path.basename(image_path),
+                "image_size": os.path.getsize(image_path),
+                "format": l01["format"],
+                "partitions": [{"index": 1, "scheme": "Logical", "type_name": "L01 Logical Container", "bootable": False, "start_lba": 0, "start_offset": 0, "sector_count": 0, "size_bytes": os.path.getsize(image_path), "filesystem": "L01", "vbr_info": {}}],
+                "mft_records": l01["entries"],
+                "warnings": l01["warnings"],
+                "header_bytes": head[:4096],
+            }
+
+        # Virtual & Forensic Block Container Streams (E01, VHD, VHDX, QCOW2, VMDK, AFF4)
+        try:
+            from src.ntfs_engine.container_streams import open_disk_container_stream
+            c_stream, fmt_label, c_warnings = open_disk_container_stream(image_path)
+            if c_stream is not None:
+                try:
+                    res = self._inspect_stream(
+                        c_stream,
+                        image_path=image_path,
+                        image_size=c_stream.size,
+                        fmt_label=fmt_label,
+                        max_mft_records=max_mft_records,
+                    )
+                    if c_warnings:
+                        res["warnings"] = list(c_warnings) + res.get("warnings", [])
+                    return res
+                finally:
+                    c_stream.close()
+        except Exception as e:
+            if head.startswith(b"EVF\x09\x0d\x0a\xff\x00") or ext in (".e01", ".vhd", ".vhdx", ".qcow2", ".vmdk", ".aff4"):
                 return {
                     "image_path": image_path,
                     "image_name": os.path.basename(image_path),
                     "image_size": os.path.getsize(image_path),
-                    "format": "E01 (EnCase EWF)",
+                    "format": ext.upper().lstrip(".") or "Disk Konteyner",
                     "partitions": [],
                     "mft_records": [],
-                    "warnings": [f"E01 konteyner başlığı tespit edildi ancak segment açma başarısız oldu: {e}"],
+                    "warnings": [f"Disk konteyneri açılırken hata oluştu: {e}"],
                     "header_bytes": head[:4096],
                 }
 
@@ -267,6 +300,82 @@ class DiskForensicsEngine:
                 "header_bytes": head[:4096],
             }
 
+        # Direct exFAT Volume without MBR
+        if len(head) >= 512 and head[3:11] == b"EXFAT   ":
+            from src.ntfs_engine.filesystem_parsers import FatExfatParser
+            exf = FatExfatParser.parse_exfat(stream, 0, max_entries=max_mft_records)
+            return {
+                "image_path": image_path,
+                "image_name": os.path.basename(image_path),
+                "image_size": image_size,
+                "format": fmt_label or "RAW Volume (exFAT)",
+                "partitions": [{
+                    "index": 1, "scheme": "VBR", "type_name": "exFAT Volume", "bootable": False,
+                    "start_lba": 0, "start_offset": 0, "sector_count": image_size // 512,
+                    "size_bytes": image_size, "filesystem": "exFAT", "vbr_info": exf["vbr_info"],
+                }],
+                "mft_records": exf["records"],
+                "warnings": warnings,
+                "header_bytes": head[:4096],
+            }
+
+        # Direct FAT32 Volume without MBR
+        if len(head) >= 512 and head[82:90] == b"FAT32   ":
+            from src.ntfs_engine.filesystem_parsers import FatExfatParser
+            f32 = FatExfatParser.parse_fat32(stream, 0, max_entries=max_mft_records)
+            return {
+                "image_path": image_path,
+                "image_name": os.path.basename(image_path),
+                "image_size": image_size,
+                "format": fmt_label or "RAW Volume (FAT32)",
+                "partitions": [{
+                    "index": 1, "scheme": "VBR", "type_name": "FAT32 Volume", "bootable": False,
+                    "start_lba": 0, "start_offset": 0, "sector_count": image_size // 512,
+                    "size_bytes": image_size, "filesystem": "FAT32", "vbr_info": f32["vbr_info"],
+                }],
+                "mft_records": f32["records"],
+                "warnings": warnings,
+                "header_bytes": head[:4096],
+            }
+
+        # Direct Linux ext4 Volume without MBR (superblock magic 0xEF53 @ 1024+56)
+        if len(head) >= 2048 and struct.unpack("<H", head[1024 + 56:1024 + 58])[0] == 0xEF53:
+            from src.ntfs_engine.filesystem_parsers import Ext4ApfsParser
+            ex4 = Ext4ApfsParser.parse_ext4(stream, 0, max_entries=max_mft_records)
+            return {
+                "image_path": image_path,
+                "image_name": os.path.basename(image_path),
+                "image_size": image_size,
+                "format": fmt_label or "RAW Volume (Linux ext4)",
+                "partitions": [{
+                    "index": 1, "scheme": "Superblock", "type_name": "Linux ext4 Volume", "bootable": False,
+                    "start_lba": 0, "start_offset": 0, "sector_count": image_size // 512,
+                    "size_bytes": image_size, "filesystem": "ext4", "vbr_info": ex4["vbr_info"],
+                }],
+                "mft_records": ex4["records"],
+                "warnings": warnings,
+                "header_bytes": head[:4096],
+            }
+
+        # Direct Apple APFS Container without MBR (NXSB @ offset 32)
+        if len(head) >= 256 and head[32:36] == b"NXSB":
+            from src.ntfs_engine.filesystem_parsers import Ext4ApfsParser
+            apfs = Ext4ApfsParser.parse_apfs(stream, 0)
+            return {
+                "image_path": image_path,
+                "image_name": os.path.basename(image_path),
+                "image_size": image_size,
+                "format": fmt_label or "Apple APFS Container (NXSB)",
+                "partitions": [{
+                    "index": 1, "scheme": "NXSB", "type_name": "Apple APFS Container", "bootable": False,
+                    "start_lba": 0, "start_offset": 0, "sector_count": image_size // 512,
+                    "size_bytes": image_size, "filesystem": "APFS", "vbr_info": apfs["vbr_info"],
+                }],
+                "mft_records": apfs["records"],
+                "warnings": warnings,
+                "header_bytes": head[:4096],
+            }
+
         partitions = self._parse_partition_table_from_stream(stream, image_size, warnings)
         all_mft_records: List[Dict[str, Any]] = []
 
@@ -290,18 +399,50 @@ class DiskForensicsEngine:
                             f"⚠️ Bölüm {part['index']}: $MFT okuma sınırı ({max_mft_records:,} kayıt) doldu; "
                             "daha büyük hacimlerde devam eden kayıtlar kesildi."
                         )
+                elif vbr_raw[3:11] == b"EXFAT   ":
+                    from src.ntfs_engine.filesystem_parsers import FatExfatParser
+                    exf = FatExfatParser.parse_exfat(stream, offset, max_entries=max_mft_records)
+                    part["filesystem"] = "exFAT"
+                    part["vbr_info"] = exf["vbr_info"]
+                    for r in exf["records"]:
+                        r["partition"] = part["index"]
+                    all_mft_records.extend(exf["records"])
+                elif vbr_raw[82:90] == b"FAT32   ":
+                    from src.ntfs_engine.filesystem_parsers import FatExfatParser
+                    f32 = FatExfatParser.parse_fat32(stream, offset, max_entries=max_mft_records)
+                    part["filesystem"] = "FAT32"
+                    part["vbr_info"] = f32["vbr_info"]
+                    for r in f32["records"]:
+                        r["partition"] = part["index"]
+                    all_mft_records.extend(f32["records"])
                 elif vbr_raw[3:11] == b"-FVE-FS-":
                     part["filesystem"] = "BitLocker (Şifreli -FVE-FS-)"
                     part["vbr_info"] = {"oem_id": "-FVE-FS-", "encrypted": True}
                     warnings.append(
                         f"Bölüm {part['index']}: BitLocker şifreli birim (-FVE-FS-) tespit edildi; FVEK / kurtarma anahtarı gereklidir."
                     )
-                elif vbr_raw[54:62] in (b"FAT16   ", b"FAT12   ") or vbr_raw[82:90] == b"FAT32   ":
-                    part["filesystem"] = "FAT"
+                elif vbr_raw[54:62] in (b"FAT16   ", b"FAT12   "):
+                    part["filesystem"] = "FAT12/16"
                     part["vbr_info"] = {"oem": vbr_raw[3:11].decode("ascii", "replace").strip()}
                 else:
-                    part["filesystem"] = part.get("type_name", "Bilinmeyen")
-                    part["vbr_info"] = {}
+                    # Check ext4 or APFS inside partition
+                    stream.seek(offset)
+                    phead = stream.read(2048)
+                    if len(phead) >= 1082 and struct.unpack("<H", phead[1080:1082])[0] == 0xEF53:
+                        from src.ntfs_engine.filesystem_parsers import Ext4ApfsParser
+                        ex4 = Ext4ApfsParser.parse_ext4(stream, offset, max_entries=max_mft_records)
+                        part["filesystem"] = "ext4"
+                        part["vbr_info"] = ex4["vbr_info"]
+                        all_mft_records.extend(ex4["records"])
+                    elif len(phead) >= 36 and phead[32:36] == b"NXSB":
+                        from src.ntfs_engine.filesystem_parsers import Ext4ApfsParser
+                        apfs = Ext4ApfsParser.parse_apfs(stream, offset)
+                        part["filesystem"] = "APFS"
+                        part["vbr_info"] = apfs["vbr_info"]
+                        all_mft_records.extend(apfs["records"])
+                    else:
+                        part["filesystem"] = part.get("type_name", "Bilinmeyen")
+                        part["vbr_info"] = {}
 
         if not partitions:
             warnings.append("Geçerli MBR (0x55AA) veya GPT ('EFI PART') bölüm tablosu bulunamadı.")

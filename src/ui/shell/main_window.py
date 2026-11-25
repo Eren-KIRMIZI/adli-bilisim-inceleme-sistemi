@@ -110,6 +110,7 @@ class MainWindow(QMainWindow):
         from src.ui.pages.relations.relations_page import RelationsPage
         from src.ui.pages.reports_page import ReportsPage
         from src.ui.pages.acquisition_page import AcquisitionPage
+        from src.ui.pages.mobile_cloud_hunt_page import MobileCloudHuntPage
         from src.ui.pages.settings_page import SettingsPage
 
         cert_dir = os.path.join(self.data_dir, "certs")
@@ -127,6 +128,9 @@ class MainWindow(QMainWindow):
         self.relations_page = RelationsPage(db_path=self.db_path)
         self.reports_page = ReportsPage(db_path=self.db_path, cert_dir=cert_dir)
         self.acquisition_page = AcquisitionPage()
+        self.mobile_cloud_page = MobileCloudHuntPage(
+            db_path=self.db_path, fts_db_path=os.path.join(self.data_dir, "fts_index.db")
+        )
         self.settings_page = SettingsPage(db_path=self.db_path, cert_dir=cert_dir)
 
         # Global case & evidence synchronization signals
@@ -148,6 +152,7 @@ class MainWindow(QMainWindow):
             self.relations_page,
             self.reports_page,
             self.acquisition_page,
+            self.mobile_cloud_page,
             self.settings_page,
         ]
 
@@ -192,6 +197,7 @@ class MainWindow(QMainWindow):
         self.statusbar.set_case_info(f"Aktif Vaka: {case_number} • Delil Sayısı: {evd_count}")
         self.dashboard_page.set_active_case(case_id)
         self.evidence_page.set_case_context(case_id)
+        self.mobile_cloud_page.set_case_context(case_id, self._active_user)
         self._save_checkpoint()
 
     def _on_active_evidence_changed(self, evidence_id: int, label: str):
@@ -248,6 +254,9 @@ class MainWindow(QMainWindow):
             self.timeline_page.refresh_records()
             self.relations_page.refresh_records()
             self.reports_page.refresh_records()
+            self.mobile_cloud_page.load_synthetic_bundle()
+            self.mobile_cloud_page.index_and_search_demo(ws["case_dir"], query="rclone")
+            self.mobile_cloud_page.run_cfreds_benchmark()
             self.dashboard_page.refresh_data()
         except Exception:
             pass

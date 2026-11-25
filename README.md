@@ -113,8 +113,21 @@ Seçili vaka için delil SHA-256 özetlerini, muhafaza zincirini, USB/IOC bulgul
 
 Canlı Windows mantıksal birimleri ve fiziksel disk hedeflerini (`\\.\PhysicalDriveN`) salt-okunur listeler; tek parça (`.dd`) veya bölünmüş (`.001/.002`) ham imaj alırken anlık SHA-256/SHA-512 hesaplar, geri-okuma doğrulaması (`post_verification_matched`) yapar ve donanımsal yazma engelleyici kaydıyla `.acquisition.json` manifesti üretir.
 
-### 15. Ayarlar, Kurumsal RBAC & Açık Kaynak Lisans Kaydı
-![Ayarlar, RBAC ve Lisanslar](docs/screenshots/15_settings.png)
+### 15. Mobil, Bulut & Tehdit Avı Merkezi (ALEAPP/iLEAPP, FTS5 & CFReDS)
+![Mobil ve Bulut Artefaktları](docs/screenshots/15_mobile_cloud_hunt.png)
+
+Android (`msgstore.db` WhatsApp, `mmssms.db` SMS, `calls`), iOS (`Manifest.db`, `sms.db`, ikili/XML `.plist`) ve Bulut Senkronizasyon/Denetim günlüklerini (Microsoft 365 / Entra ID JSON/CSV, OneDrive, Google Drive) tek tabloda birleştirerek mobil cihaz ve bulut eksenindeki sızma/iletişim izlerini çözümler.
+
+![SQLite FTS5 Tam Metin Arama ve Analist Etiketleme](docs/screenshots/15b_fts_bookmarks.png)
+
+**SQLite FTS5** tam metin indeksleme motoru vaka klasöründeki belge/log/XML/DOCX/SQLite metin kalıntılarını BM25 sıralamalı kesitlerle (`snippet`) milisaniyede arar; **Analist Bulgu Etiketleme (Bookmarks)** katmanı ise `Kanıt`, `Şüpheli`, `Kritik IOC` ve `Yanlış Pozitif` etiketleriyle işaretlenen bulguları doğrudan HTML/PDF bilirkişi raporuna taşır.
+
+![CFReDS Doğrulama, Uzak Triyaj ve STIX 2.1](docs/screenshots/15c_cfreds_benchmark.png)
+
+Dahili **CFReDS Tarzı Referans Doğrulama Paketi** tüm ayrıştırıcıların doğruluk oranını (`%100`) test eder; ayrıca Velociraptor/KAPE tarzı salt-okunur uzak uç nokta PowerShell toplama betiği (`.ps1`) ile **STIX 2.1 IOC Paketi** üretir.
+
+### 16. Ayarlar, Kurumsal RBAC & Açık Kaynak Lisans Kaydı
+![Ayarlar, RBAC ve Lisanslar](docs/screenshots/16_settings.png)
 
 Sabit koyu laboratuvar arayüzü politikasını, **PBKDF2-HMAC-SHA256** korumalı çoklu kullanıcı/rol matrisini (**RBAC**: `Admin`, `LeadInvestigator`, `Analyst`, `Reviewer`), X.509 laboratuvar imza sertifikası parmak izini ve doğrulanmış açık kaynak kütüphane envanterini (`docs/LICENSES.md`) gösterir.
 
@@ -197,18 +210,21 @@ Kritik adli incelemeler sırasında yaşanabilecek ani elektrik kesintisi, siste
 
 ---
 
-## v2.0 Kurumsal & Saha İnceleme Katmanları
+## v2.0 & v3.0 Kurumsal, Saha & Tam DFIR Kapsam Katmanları
 
-Başlangıçta v2.0 yol haritasında yer alan ileri seviye laboratuvar gereksinimleri projeye entegre edilmiştir:
+Başlangıçta yol haritasında yer alan kurumsal, saha ve gelişmiş DFIR yeteneklerinin tamamı projeye entegre edilmiştir:
 
-- **Saha İmaj Edinim (`src/acquisition_engine/`):** Canlı Windows sürücülerini ve `\\.\PhysicalDriveN` aygıtlarını salt-okunur listeler, bölünmüş/tek parça RAW (`.dd` / `.001`) imaj alır, tek geçişli SHA-256/SHA-512 hesaplayıp geri-okuma ile doğrular ve donanımsal write-blocker varsayılanı `False` kalacak şekilde `.acquisition.json` manifesti üretir.
-- **Canlı İşletim Sistemi Yetki & UAC Yönetimi (`src/core/privilege_service.py`):** Standart kullanıcı oturumunda kilitli olan `System.evtx` / `Security.evtx` ve `C:\Windows\Prefetch` erişim durumunu dürüstçe raporlar; kullanıcının açık onayıyla resmi Windows UAC (`runas`) yükseltmesi başlatabilir ve yükseltilmiş oturumda `wevtutil epl` ile canlı kanal + Win10/11 MAM (`ntdll.RtlDecompressBufferEx`) Prefetch dosyalarını toplayabilir.
+- **Saha İmaj & Canlı Süreç Bellek Edinimi (`src/acquisition_engine/`):** Canlı Windows sürücülerini ve `\\.\PhysicalDriveN` aygıtlarını salt-okunur listeler, bölünmüş/tek parça RAW (`.dd` / `.001`) imaj alır, tek geçişli SHA-256/SHA-512 hesaplayıp geri-okuma ile doğrular; ayrıca Windows `dbghelp.dll!MiniDumpWriteDump` üzerinden hedef PID süreç bellek dökümü (`.dmp`) ve opsiyonel WinPMEM köprüsü sunar.
+- **Genişletilmiş Disk Kapları & Dosya Sistemleri (`src/ntfs_engine/`):** `.dd`/`.E01` yanında **`.VHD`**, **`.VHDX`**, **`.QCOW2`**, **`.VMDK`**, **`.AFF4`** ve mantıksal **`.AD1`/`.L01`** kaplarını okur; **NTFS**, **FAT32**, **exFAT**, **Linux `ext4`** ve **Apple `APFS` (`NXSB`/`APSB`)** dosya sistemlerini, **VSS** gölge kopyalarını, NTFS **`$LogFile`** (`RSTR`/`RCRD`) işlemlerini ve **BitLocker (`-FVE-FS-`)** FVEK/kurtarma anahtarıyla sektör şifre çözmeyi destekler.
+- **SRUM, BAM/DAM, `ActivitiesCache.db`, Scheduled Tasks, WMI & Sigma (`src/registry_engine/`, `src/eventlog_engine/`):** Saf Python **ESE/JET Blue** motoruyla `SRUDB.dat` (SRUM ağ/uygulama kullanımı), `BAM`/`DAM`, Windows 10/11 Timeline `ActivitiesCache.db`, Task XML, WMI `OBJECTS.DATA` ve EVTX üzerinde **Sigma YAML** tehdit avcılığı kural motorunu çalıştırır.
+- **Gerçek YARA, `.pcapng`, `.mbox`/`.pst`, Mobil/Bulut, FTS5 & STIX 2.1:** `yara-python` ile harici `.yar` kuralları, PCAPNG (`.pcapng`), Outlook PFF (`.pst`/`.ost`) & `.mbox`, Android/iOS (WhatsApp `msgstore.db`, SMS, `Manifest.db`, `.plist`), M365/OneDrive bulut denetim günlükleri, **SQLite FTS5** tam metin arama, **Analist Bulgu Etiketleme (`ArtifactBookmark`)**, **STIX 2.1 / CSV** dışa aktarım, Velociraptor/KAPE tarzı uzak triyaj `.ps1` üreticisi ve **CFReDS doğrulama paketi** entegredir.
+- **Canlı İşletim Sistemi Yetki & UAC Yönetimi (`src/core/privilege_service.py`):** Standart kullanıcı oturumunda kilitli olan `System.evtx` / `Security.evtx` ve `C:\Windows\Prefetch` erişim durumunu dürüstçe raporlar; kullanıcının açık onayıyla resmi Windows UAC (`runas`) yükseltmesi başlatabilir.
 - **Gelişmiş RAM Çekirdek Başlığı & Volatility 3 Köprüsü (`src/memory_engine/`):** `PAGEDU64` (`DUMP_HEADER64`) içerisinden `DirectoryTableBase (CR3)`, `PsLoadedModuleList`, `PsActiveProcessHead`, çekirdek sayısı ve `BugCheckCode` alanlarını çözümler; opsiyonel **Volatility 3** kurulu ortamlarda `-r json` eklenti köprüsünü çalıştırır.
 - **Kurumsal Çoklu Kullanıcı (RBAC) & X.509 Rapor İmzalama (`src/core/auth_service.py`, `src/core/signing_service.py`):** `PBKDF2-HMAC-SHA256` (200.000 iterasyon + salt) parola doğrulamasıyla `Admin`, `LeadInvestigator`, `Analyst` ve `Reviewer` rollerini ayırır; HTML/PDF raporları **X.509 RSA-2048 RSA-PSS-SHA256** sertifikasıyla imzalayıp 1 baytlık değişikliği bile yakalayan bağımsız imza doğrulaması sunar.
 
 ---
 
-## Modüller ve İşlevleri (15 Entegre Modül)
+## Modüller ve İşlevleri (16 Entegre Modül)
 
 | # | Modül | Motor & Arayüz | Ne İşe Yarar? |
 |---|---|---|---|
@@ -216,17 +232,18 @@ Başlangıçta v2.0 yol haritasında yer alan ileri seviye laboratuvar gereksini
 | **02** | **Vaka Yönetimi (Cases)** | `case_engine/` | Benzersiz vaka numarasıyla soruşturma açma, durum geçişleri (`open`, `in_progress`, `closed`, `archived`), bağlı deliller ve vaka bazlı denetim geçmişi. |
 | **03** | **Delil Yönetimi (Evidence)** | `evidence_engine/` | Cihaz/imaj envanteri, seri numarası, kapasite, yazma engelleyici (write-blocker) kaydı ve kabul anında tek geçişli SHA-256/SHA-512 hesaplama. |
 | **04** | **Bütünlük & Muhafaza Zinciri** | `integrity_engine/` | Büyük dosyalar için `QThread` SHA-256/SHA-512 doğrulama, referans hash karşılaştırma ve UNODC uyumlu teslim/erişim amacı kayıtları (`ChainOfCustodyEntry`). |
-| **05** | **Disk Forensics** | `ntfs_engine/` | Saf Python **EnCase `.E01` (EWF)** akış çözücü, **MBR & GPT**, **BitLocker (`-FVE-FS-`)** tespiti, **NTFS VBR & `$MFT`** (`data_runs` parçalı MFT akışı, tam dizin yolu çözümleme, aktif ve silinmiş kayıtlar, MACB, USA fixup), **`$UsnJrnl:$J`**, akış tabanlı **File Carving**; 3 sütunlu Finder düzeni + Hex görüntüleyici. |
-| **06** | **Windows & Ağ Forensics** | `registry_engine/`, `eventlog_engine/`, `email_network_engine/` | Özgün **`regf` Registry Hive** (`db` Big Data, **UserAssist ROT13**, **ShimCache**, **`BagMRU` ShellBags**, **Amcache**), yapısal **`BinXml`** **`ElfFile` EVTX**, **`.lnk`**, 8 zamanlı **Prefetch (`.pf`)**, OLE2 **Jump List**, **`$I`**, **KAPE-stili `TriageCollector`** ve **`.pcap` / DNS / HTTP / `hosts`** ağ incelemesi. |
+| **05** | **Disk Forensics** | `ntfs_engine/` | Saf Python `.E01`/`.dd`/`.VHD`/`.VHDX`/`.QCOW2`/`.VMDK`/`.AFF4`/`.AD1`/`.L01`, **NTFS/FAT32/exFAT/ext4/APFS**, **BitLocker (`-FVE-FS-`)** FVEK çözme, **VSS**, **`$LogFile`**, **`$UsnJrnl:$J`**, File Carving + Hex görüntüleyici. |
+| **06** | **Windows & Ağ Forensics** | `registry_engine/`, `eventlog_engine/`, `email_network_engine/` | Özgün **`regf` Registry Hive** (UserAssist, ShimCache, ShellBags, Amcache, **BAM/DAM**), **`SRUDB.dat` (ESE/SRUM)**, **`ActivitiesCache.db`**, Task XML, WMI `OBJECTS.DATA`, **`BinXml` EVTX + Sigma YAML**, `.lnk`/`.pf`/Jump List/`$I`, **`.pcap`/`.pcapng`/DNS/HTTP/`hosts`**. |
 | **07** | **USB Cihaz Analizi** | `usb_engine/` | Canlı `winreg` (`USBSTOR`, `MountedDevices`) ve çevrimdışı `SYSTEM` kovanı analizi; VID/PID, seri no, sürücü harfi, kullanıcı ilişkisi ve şüpheli HID/BadUSB anomali tespiti. |
 | **08** | **Tarayıcı Analizi** | `browser_engine/` | Chrome, Edge ve Firefox SQLite (`History`, `places.sqlite`, `Cookies`, `cookies.sqlite`, `Bookmarks`) veritabanlarından ziyaret, indirme, arama terimi ve maskeli çerez metadata çıkarımı (WebKit & PRTime → UTC). |
 | **09** | **RAM Bellek Analizi** | `memory_engine/` | `PAGEDU64`, `PAGEDUMP`, `HIBR`, `ELF`, `LiME` başlığı doğrulama, **KDBG**, açık heuristik etiketli **`Proc` pool `EPROCESS` adayları**, bellek içi PE (`MZ/PE`) & IPv4/URL IOC taraması, opsiyonel Volatility 3 kontrolü ve canlı Toolhelp32 süreç görüntüsü. |
-| **10** | **Dosya, YARA & E-posta** | `file_engine/`, `email_network_engine/` | Magic-byte dosya imzası & **uzantı sahteciliği**, Shannon entropisi, **JPEG EXIF**, yerel **SQLite Hash Set (NSRL/IOC CSV içe aktarma)**, saf Python **YARA-stili tekil/klasör tarayıcısı**, **RFC 5322 `.eml`** e-posta inceleme, diff ve duplicate taraması. |
+| **10** | **Dosya, YARA & E-posta** | `file_engine/`, `email_network_engine/` | Magic-byte dosya imzası & uzantı sahteciliği, Shannon entropisi, EXIF, yerel Hash Set (NSRL/IOC), **`yara-python` (.yar) + Python YARA**, **`.eml` / `.mbox` / `.pst`/`.ost` (PFF)** inceleme, diff ve duplicate taraması. |
 | **11** | **Olay Zaman Çizelgesi** | `timeline_engine/` | USB, Muhafaza Zinciri, Denetim, DB `ForensicArtifact` ve `$MFT`/EVTX/Prefetch/Tarayıcı/E-posta artefaktlarını tek UTC **Super-Timeline**'da birleştirir; saatlik yoğunluk grafiği, filtreleme ve $\Delta t$ hesabı sunar. |
 | **12** | **Bulgu İlişkilendirme** | `correlation_engine/` | NetworkX + etkileşimli `QGraphicsView` ile vaka-delil-kullanıcı-USB grafiği oluşturur; kanıtlı bağlantılar ile kanıtlanmamış zamansal hipotezleri net ayırır. |
-| **13** | **Adli Rapor Oluşturucu** | `report_engine/`, `signing_service.py` | Jinja2 HTML, ReportLab PDF raporu ve **X.509 RSA-PSS-SHA256** kriptografik imza üretimi/doğrulaması. |
-| **14** | **Saha İmaj Edinim** | `acquisition_engine/` | Mantıksal/fiziksel disklerden salt-okunur RAW (`.dd`/`.001`) imaj edinimi, SHA-256/512 ve geri-okuma doğrulaması. |
-| **15** | **Ayarlar, RBAC & Lisanslar** | `settings_page.py`, `auth_service.py` | Sabit koyu konsol ilkeleri, PBKDF2-HMAC-SHA256 çoklu kullanıcı RBAC matrisi, X.509 sertifika parmak izi ve lisans kaydı. |
+| **13** | **Adli Rapor Oluşturucu** | `report_engine/`, `signing_service.py` | Jinja2 HTML, ReportLab PDF (analist bookmarkları dahil), **X.509 RSA-PSS-SHA256** imza ve **STIX 2.1 / CSV / CASE-UCO** dışa aktarımı. |
+| **14** | **Saha İmaj Edinim** | `acquisition_engine/` | Mantıksal/fiziksel disklerden salt-okunur RAW (`.dd`/`.001`) imaj edinimi, SHA-256/512 geri-okuma doğrulaması ve canlı süreç **PID `MiniDumpWriteDump`** bellek dökümü. |
+| **15** | **Mobil, Bulut & Tehdit Avı** | `mobile_cloud_engine/`, `fts_index.py`, `bookmark_service.py` | Android/iOS (WhatsApp/SMS/iMessage/`Manifest.db`/`.plist`), M365/OneDrive bulut denetimi, **SQLite FTS5** tam metin arama, bulgu etiketleme, uzak triyaj `.ps1` ve **CFReDS doğrulama paketi**. |
+| **16** | **Ayarlar, RBAC & Lisanslar** | `settings_page.py`, `auth_service.py` | Sabit koyu konsol ilkeleri, PBKDF2-HMAC-SHA256 çoklu kullanıcı RBAC matrisi, X.509 sertifika parmak izi ve lisans kaydı. |
 
 ---
 
@@ -254,9 +271,10 @@ adli-bilisim-inceleme-sistemi/
 │   ├── timeline_engine/            # UTC birleşik zaman çizelgesi ve Δt hesaplayıcı
 │   ├── correlation_engine/         # NetworkX bulgu ilişkilendirme motoru
 │   ├── report_engine/              # Jinja2 HTML ve ReportLab PDF rapor üreticisi
-│   ├── acquisition_engine/         # Salt-okunur RAW (.dd/.001) saha imaj edinim ve doğrulama motoru
-│   └── ui/                         # PySide6 koyu konsol teması (tokens.py), kabuk, QPainter grafikler ve 15 sayfa
-└── tests/                          # Sentetik ikili örnekler, RBAC/X.509 ve headless Qt test paketi (72 test)
+│   ├── acquisition_engine/         # Salt-okunur RAW (.dd/.001) & PID MiniDump edinim motoru
+│   ├── mobile_cloud_engine/        # Android/iOS (WhatsApp/SMS/Plist) & M365/OneDrive bulut motoru
+│   └── ui/                         # PySide6 koyu konsol teması (tokens.py), kabuk, QPainter grafikler ve 16 sayfa
+└── tests/                          # Sentetik ikili örnekler, RBAC/X.509, v3.0 DFIR ve headless Qt test paketi (76 test)
 ```
 
 ---
@@ -282,7 +300,7 @@ Uygulama ilk açılışta `data/forensics.db` veritabanını WAL modunda oluştu
 python -m pytest -v
 ```
 
-Test paketi sentetik MBR/NTFS/$MFT/.E01/BitLocker imajları, `$UsnJrnl:$J`, `$SI`/`$FN` timestomping & ADS, `regf` Registry kovanları (UserAssist/ShimCache/ShellBags/Amcache), yapısal `BinXml` EVTX kayıtları, `.lnk`/8-TS `.pf`/Mini-Stream Jump List/`$I` dosyaları, `TriageCollector`, YARA/HashSet, `.eml` & `.pcap`/`hosts`, EXIF JPEG'ler, Chrome `visits`+WAL SQLite veritabanları, `DUMP_HEADER64` (`CR3`) + Volatility 3 köprüsü, `Super-Timeline` + CASE/UCO/JSONL/BodyFile + XSS korumalı HTML/PDF + **X.509 RSA-PSS-SHA256 rapor imzalama**, **PBKDF2 RBAC yetkilendirme**, **RAW/bölünmüş saha imaj edinimi**, hash zincirli `AuditLog`, WAL/kurtarma senaryoları, `100k` sayfalı tablo ölçek testi ve headless PySide6 arayüz/grafik bileşenlerini kapsayan **72 otomatik test** içerir.
+Test paketi sentetik MBR/NTFS/$MFT/.E01/VHD/VHDX/QCOW2/AFF4/AD1/FAT32/exFAT/ext4/APFS/BitLocker FVEK imajları, `$UsnJrnl:$J`, `$LogFile`, VSS, `$SI`/`$FN` timestomping & ADS, `regf` Registry kovanları (UserAssist/ShimCache/ShellBags/Amcache/BAM), ESE/`SRUDB.dat`, `ActivitiesCache.db`, Task XML, WMI `OBJECTS.DATA`, yapısal `BinXml` EVTX + Sigma YAML kuralları, `.lnk`/8-TS `.pf`/Mini-Stream Jump List/`$I` dosyaları, `TriageCollector` + uzak `.ps1`, YARA (`yara-python`/Python)/HashSet, `.eml`/`.mbox`/`.pst` & `.pcap`/`.pcapng`/`hosts`, WhatsApp/iOS/M365, SQLite FTS5, `ArtifactBookmark`, EXIF JPEG'ler, Chrome `visits`+WAL SQLite veritabanları, `DUMP_HEADER64` (`CR3`) + Volatility 3 köprüsü, `Super-Timeline` + CASE/UCO/STIX 2.1/CSV/JSONL/BodyFile + XSS korumalı HTML/PDF + **X.509 RSA-PSS-SHA256 rapor imzalama**, **PBKDF2 RBAC yetkilendirme**, **RAW/bölünmüş & PID MiniDump saha edinimi**, hash zincirli `AuditLog`, WAL/kurtarma senaryoları, `100k` sayfalı tablo ölçek testi ve headless PySide6 arayüz/grafik bileşenlerini kapsayan **76 otomatik test** içerir.
 
 Gerçek bir Windows 11 iş istasyonunda salt-okunur çalıştırılan çapraz doğrulama sonuçları (`Get-FileHash`, canlı `winreg`, `USBSTOR`, gerçek `.lnk`/OLE2 Jump List, Microsoft Edge profili ve Toolhelp32 süreçleri) için: [scripts/verify_real_world.py](scripts/verify_real_world.py) ve [Gerçek Dünya Doğrulama Raporu](docs/REAL_WORLD_VALIDATION.md).
 

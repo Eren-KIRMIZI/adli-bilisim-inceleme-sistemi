@@ -280,6 +280,10 @@ class WindowsForensicsPage(QWidget):
         sample_evtx_btn = QPushButton("🧪 Sentetik Security EVTX İncele")
         sample_evtx_btn.clicked.connect(self._load_synthetic_evtx)
         toolbar.addWidget(sample_evtx_btn)
+
+        sigma_btn = QPushButton("🎯 Sigma Tehdit Avı")
+        sigma_btn.clicked.connect(self._run_sigma_hunt)
+        toolbar.addWidget(sigma_btn)
         lay.addLayout(toolbar)
 
         splitter = QSplitter(Qt.Horizontal)
@@ -371,6 +375,33 @@ class WindowsForensicsPage(QWidget):
             f"AYRINTILAR (BinXML Tokenları):\n{row['Ayrıntılar']}"
         )
         self.evtx_hex.load_bytes(row.get("_raw", b""))
+
+    def _run_sigma_hunt(self):
+        from src.eventlog_engine.sigma_engine import SigmaRuleEngine
+        if not self._evtx_events:
+            QMessageBox.information(self, "EVTX Gerekli", "Önce bir .evtx dosyası yükleyin.")
+            return
+        events_input = [
+            {
+                "record_id": r["Kayıt #"],
+                "event_id": r["Event ID"],
+                "timestamp": r["Zaman (UTC)"],
+                "description": r["Olay Açıklaması"],
+                "details": r["Ayrıntılar"],
+            }
+            for r in self._evtx_events
+        ]
+        hits = SigmaRuleEngine().scan_events(events_input)
+        if not hits:
+            self.evtx_detail.setPlainText("Sigma Tehdit Avı Tamamlandı: Yerleşik kurallarla eşleşen şüpheli olay bulunamadı.")
+            return
+        lines = [f"🎯 SIGMA TEHDİT AVI SONUÇLARI ({len(hits)} Eşleşme):"]
+        for h in hits[:40]:
+            lines.append(
+                f"[{h['level'].upper()} | Skor:{h['score']}] {h['title']} (EventID {h['event_id']}, Kayıt #{h['record_id']})\n"
+                f"  Etiket: {h['tags']} | {h['description']}"
+            )
+        self.evtx_detail.setPlainText("\n".join(lines))
 
     # ------------------------------------------------------------------
     # TAB 3: Execution & User Artifacts (Prefetch, LNK, $I, Live Triage)
@@ -469,7 +500,7 @@ class WindowsForensicsPage(QWidget):
             self,
             "Windows Artefakt Dosyası Seç",
             "",
-            "Artefaktlar (*.pf *.lnk *.automaticDestinations-ms $I*);;Tüm Dosyalar (*.*)"
+            "Artefaktlar (*.pf *.lnk *.automaticDestinations-ms $I* SRUDB.dat *.edb ActivitiesCache.db *.xml OBJECTS.DATA);;Tüm Dosyalar (*.*)"
         )
         if fp:
             self.load_artifact_file(fp)
@@ -556,8 +587,57 @@ class WindowsForensicsPage(QWidget):
                     "Kaynak": f"Orijinal Boyut: {p['original_size']:,} B",
                     "_raw": p["raw_bytes"],
                 })
+            elif lower_base in ("srudb.dat",) or lower_base.endswith(".edb"):
+                from src.registry_engine.ese_srum_parser import EseDatabaseParser
+                srum = EseDatabaseParser.parse_ese(path)
+                for r in srum["records"]:
+                    self._artifact_rows.insert(0, {
+                        "Durum": "Doğrulandı",
+                        "Artefakt Türü": f"SRUM ({r['table']})",
+                        "Ad / Dosya": r["app_or_user"],
+                        "Hedef / Değer / Yol": r["details"],
+                        "Zaman / Sayaç": r.get("timestamp") or "-",
+                        "Kaynak": base,
+                        "_raw": str(r).encode("utf-8", "replace"),
+                    })
+            elif "activitiescache" in lower_base or lower_base.endswith(".db"):
+                from src.registry_engine.extended_windows_artifacts import ExtendedWindowsArtifacts
+                for r in ExtendedWindowsArtifacts.parse_activities_cache(path):
+                    self._artifact_rows.insert(0, {
+                        "Durum": "Doğrulandı",
+                        "Artefakt Türü": r["artifact_type"],
+                        "Ad / Dosya": os.path.basename(r["application"]) or r["application"],
+                        "Hedef / Değer / Yol": r["payload"] or r["application"],
+                        "Zaman / Sayaç": r.get("start_utc") or "-",
+                        "Kaynak": base,
+                        "_raw": str(r).encode("utf-8", "replace"),
+                    })
+            elif lower_base.endswith(".xml"):
+                from src.registry_engine.extended_windows_artifacts import ExtendedWindowsArtifacts
+                t = ExtendedWindowsArtifacts.parse_scheduled_task_xml(path)
+                self._artifact_rows.insert(0, {
+                    "Durum": "İnceleniyor" if t["suspicious"] else "Doğrulandı",
+                    "Artefakt Türü": t["artifact_type"],
+                    "Ad / Dosya": t["task_name"],
+                    "Hedef / Değer / Yol": " | ".join(t["commands"]) or "-",
+                    "Zaman / Sayaç": t["date"],
+                    "Kaynak": f"Yazar: {t['author']} | Yetki: {t['run_level']}",
+                    "_raw": str(t).encode("utf-8", "replace"),
+                })
+            elif lower_base == "objects.data":
+                from src.registry_engine.extended_windows_artifacts import ExtendedWindowsArtifacts
+                for w in ExtendedWindowsArtifacts.scan_wmi_objects_data(path):
+                    self._artifact_rows.insert(0, {
+                        "Durum": "Kritik" if w["suspicious"] else "İnceleniyor",
+                        "Artefakt Türü": w["artifact_type"],
+                        "Ad / Dosya": w["offset"],
+                        "Hedef / Değer / Yol": w["preview"],
+                        "Zaman / Sayaç": "-",
+                        "Kaynak": base,
+                        "_raw": w["preview"].encode("utf-8", "replace"),
+                    })
             else:
-                QMessageBox.warning(self, "Desteklenmeyen Tür", f"'{base}' desteklenen .pf, .lnk, .automaticDestinations-ms veya $I formatında değil.")
+                QMessageBox.warning(self, "Desteklenmeyen Tür", f"'{base}' desteklenen .pf, .lnk, .automaticDestinations-ms, $I, SRUDB.dat, ActivitiesCache.db, Task XML veya OBJECTS.DATA formatında değil.")
                 return
 
             self._apply_artifact_filters()
@@ -641,7 +721,7 @@ class WindowsForensicsPage(QWidget):
         return w
 
     def _open_pcap_dialog(self):
-        fp, _ = QFileDialog.getOpenFileName(self, "PCAP Yakalama Dosyası Seç", "", "PCAP (*.pcap);;Tüm Dosyalar (*.*)")
+        fp, _ = QFileDialog.getOpenFileName(self, "PCAP / PCAPNG Yakalama Dosyası Seç", "", "PCAP / PCAPNG (*.pcap *.pcapng);;Tüm Dosyalar (*.*)")
         if fp:
             self.load_pcap(fp)
 

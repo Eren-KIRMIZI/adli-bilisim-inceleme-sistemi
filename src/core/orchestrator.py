@@ -187,12 +187,32 @@ class PluginRegistry:
                 confidence=100,
             )]
 
-        self.register(ForensicPlugin("ntfs_disk", "NTFS/E01 Disk İnceleme", "2.0", (".dd", ".raw", ".img", ".e01", "$mft"), _run_disk))
+        def _run_srum(path: str, case_id: int, evd_id: Optional[int]) -> List[ForensicArtifactModel]:
+            from src.registry_engine.ese_srum_parser import EseDatabaseParser
+            res = EseDatabaseParser.parse_ese(path)
+            return [
+                ForensicArtifactModel(
+                    artifact_id=f"srum-{idx}-{uuid.uuid4().hex[:6]}",
+                    case_id=case_id,
+                    evidence_id=evd_id,
+                    artifact_type="Windows/SRUM",
+                    source_file=path,
+                    source_location=str(r.get("table", "SRUM")),
+                    extracted_data=r,
+                    parser_name="EseDatabaseParser",
+                    parser_version="3.0",
+                    confidence=90,
+                )
+                for idx, r in enumerate(res.get("records", [])[:500])
+            ]
+
+        self.register(ForensicPlugin("ntfs_disk", "Disk/Konteyner (RAW/E01/VHD/QCOW2/FAT/ext4)", "3.0", (".dd", ".raw", ".img", ".e01", ".vhd", ".vhdx", ".qcow2", ".vmdk", ".aff4", ".ad1", ".l01", "$mft"), _run_disk))
         self.register(ForensicPlugin("evtx_logs", "EVTX BinXml Ayrıştırıcı", "2.0", (".evtx",), _run_evtx))
         self.register(ForensicPlugin("prefetch", "Windows Prefetch (.pf)", "2.0", (".pf",), _run_prefetch))
         self.register(ForensicPlugin("eml_email", "RFC 5322 E-posta (.eml)", "1.0", (".eml",), _run_eml))
-        self.register(ForensicPlugin("pcap_network", "libpcap Ağ Analizi (.pcap)", "1.0", (".pcap",), _run_pcap))
-        self.register(ForensicPlugin("file_threat", "Dosya & YARA-Stili Tarama", "2.0", (".ps1", ".exe", ".dll", ".txt", ".jpg", ".pdf", ".zip"), _run_file_threat))
+        self.register(ForensicPlugin("pcap_network", "Ağ Analizi (.pcap/.pcapng)", "3.0", (".pcap", ".pcapng"), _run_pcap))
+        self.register(ForensicPlugin("srum_ese", "SRUM / ESE Veritabanı (.dat)", "3.0", ("srudb.dat", ".edb"), _run_srum))
+        self.register(ForensicPlugin("file_threat", "Dosya & YARA-Stili Tarama", "3.0", (".ps1", ".exe", ".dll", ".txt", ".jpg", ".pdf", ".zip"), _run_file_threat))
 
 
 class AnalysisOrchestrator:
@@ -364,4 +384,88 @@ class AnalysisOrchestrator:
                 if isinstance(row.get("timestamp_utc"), datetime):
                     row["timestamp_utc"] = row["timestamp_utc"].isoformat() + "Z"
                 f.write(json.dumps(row, ensure_ascii=False, default=str) + "\n")
+        return output_path
+
+    @staticmethod
+    def export_csv(rows: List[Dict[str, Any]], output_path: str) -> str:
+        """Export forensic tables or timeline rows as UTF-8 BOM Excel-compatible CSV."""
+        import csv
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+        keys: List[str] = []
+        for r in rows:
+            for k in r.keys():
+                if not str(k).startswith("_") and k not in keys:
+                    keys.append(k)
+        with open(output_path, "w", encoding="utf-8-sig", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=keys or ["empty"])
+            writer.writeheader()
+            for r in rows:
+                writer.writerow({k: r.get(k, "") for k in keys})
+        return output_path
+
+    def export_stix2_bundle(self, case_id: int, output_path: str, extra_iocs: Optional[List[Dict[str, str]]] = None) -> str:
+        """Export case evidences, artifact hashes, IPs/URLs/domains as a STIX 2.1 JSON Bundle."""
+        import re
+        with self.Session() as s:
+            c = s.query(Case).filter(Case.id == case_id).first()
+            if not c:
+                raise ValueError(f"Vaka bulunamadı: ID={case_id}")
+            evds = s.query(Evidence).filter(Evidence.case_id == case_id).all()
+            arts = s.query(ForensicArtifact).filter(ForensicArtifact.case_id == case_id).all()
+
+        objects: List[Dict[str, Any]] = []
+        now_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        for e in evds:
+            if e.sha256_hash:
+                objects.append({
+                    "type": "indicator",
+                    "spec_version": "2.1",
+                    "id": f"indicator--{uuid.uuid5(uuid.NAMESPACE_DNS, e.sha256_hash)}",
+                    "created": now_iso,
+                    "modified": now_iso,
+                    "name": f"Evidence {e.evidence_number} ({e.brand} {e.model})".strip(),
+                    "pattern": f"[file:hashes.'SHA-256' = '{e.sha256_hash}']",
+                    "pattern_type": "stix",
+                    "valid_from": now_iso,
+                })
+        seen_pat = set()
+        blob_sources = [a.extracted_data or "" for a in arts]
+        for b in blob_sources:
+            for ip in re.findall(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", b):
+                pat = f"[ipv4-addr:value = '{ip}']"
+                if pat not in seen_pat:
+                    seen_pat.add(pat)
+                    objects.append({
+                        "type": "indicator", "spec_version": "2.1",
+                        "id": f"indicator--{uuid.uuid5(uuid.NAMESPACE_DNS, pat)}",
+                        "created": now_iso, "modified": now_iso,
+                        "name": f"Observed IPv4 {ip}", "pattern": pat, "pattern_type": "stix", "valid_from": now_iso,
+                    })
+            for url in re.findall(r"https?://[^\s\"'<>\\]+", b):
+                pat = f"[url:value = '{url}']"
+                if pat not in seen_pat:
+                    seen_pat.add(pat)
+                    objects.append({
+                        "type": "indicator", "spec_version": "2.1",
+                        "id": f"indicator--{uuid.uuid5(uuid.NAMESPACE_URL, pat)}",
+                        "created": now_iso, "modified": now_iso,
+                        "name": f"Observed URL", "pattern": pat, "pattern_type": "stix", "valid_from": now_iso,
+                    })
+        for ioc in (extra_iocs or []):
+            val = ioc.get("value", "")
+            kind = ioc.get("type", "domain")
+            pat = f"[{kind}:value = '{val}']"
+            if val and pat not in seen_pat:
+                seen_pat.add(pat)
+                objects.append({
+                    "type": "indicator", "spec_version": "2.1",
+                    "id": f"indicator--{uuid.uuid5(uuid.NAMESPACE_DNS, pat)}",
+                    "created": now_iso, "modified": now_iso,
+                    "name": ioc.get("label", val), "pattern": pat, "pattern_type": "stix", "valid_from": now_iso,
+                })
+
+        bundle = {"type": "bundle", "id": f"bundle--{uuid.uuid4()}", "objects": objects}
+        os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+        with open(output_path, "w", encoding="utf-8") as f:
+            json.dump(bundle, f, indent=2, ensure_ascii=False)
         return output_path

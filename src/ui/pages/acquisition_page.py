@@ -140,6 +140,15 @@ class AcquisitionPage(QWidget):
         self.acquire_btn.clicked.connect(self._start_acquisition)
         r_lay.addWidget(self.acquire_btn)
 
+        pid_row = QHBoxLayout()
+        self.pid_input = QLineEdit()
+        self.pid_input.setPlaceholderText("Canlı Süreç PID (MiniDumpWriteDump)...")
+        pid_row.addWidget(self.pid_input, 1)
+        self.ram_btn = QPushButton("🧠 Süreç RAM Dökümü (.dmp)")
+        self.ram_btn.clicked.connect(self._acquire_pid_dump)
+        pid_row.addWidget(self.ram_btn)
+        r_lay.addLayout(pid_row)
+
         self.progress = QProgressBar()
         self.progress.setFixedHeight(14)
         self.progress.setValue(0)
@@ -244,3 +253,17 @@ class AcquisitionPage(QWidget):
         worker.finished_result.connect(on_done)
         worker.failed.connect(on_err)
         worker.start()
+
+    def _acquire_pid_dump(self) -> None:
+        raw_pid = self.pid_input.text().strip()
+        if not raw_pid.isdigit():
+            QMessageBox.warning(self, "Geçersiz PID", "Lütfen geçerli sayısal bir Windows süreç PID'si girin.")
+            return
+        fp, _ = QFileDialog.getSaveFileName(self, "Süreç Bellek Dökümü Kaydet", f"outputs/pid_{raw_pid}.dmp", "Dump (*.dmp)")
+        if not fp:
+            return
+        try:
+            man = AcquisitionService.acquire_process_memory_dump(int(raw_pid), fp, operator=self._active_operator)
+            self.manifest_view.setPlainText(json.dumps(man, indent=2, ensure_ascii=False))
+        except Exception as e:
+            QMessageBox.warning(self, "RAM Dökümü Hatası", str(e))

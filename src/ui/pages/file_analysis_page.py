@@ -320,6 +320,10 @@ class FileAnalysisPage(QWidget):
         y_scan.setObjectName("primaryBtn")
         y_scan.clicked.connect(lambda: self.scan_yara_folder(self.yara_dir.text()))
         yara_row.addWidget(y_scan)
+
+        yar_btn = QPushButton("📜 .yar Kural Yükle")
+        yar_btn.clicked.connect(self._load_yar_file)
+        yara_row.addWidget(yar_btn)
         lay.addLayout(yara_row)
 
         self.yara_table = ForensicDataTable(
@@ -406,8 +410,22 @@ class FileAnalysisPage(QWidget):
         lay.addWidget(splitter, 1)
         return w
 
+    def _load_yar_file(self):
+        fp, _ = QFileDialog.getOpenFileName(self, "Gerçek YARA Kural Dosyası Seç", "", "YARA Kuralları (*.yar *.yara);;Tüm Dosyalar (*.*)")
+        if not fp:
+            return
+        try:
+            backend = self.yara_scanner.load_yar_file(fp)
+            self.sig_badge.set_status(backend, "verified")
+            QMessageBox.information(self, "YARA Yüklendi", f"Kural dosyası derlendi: {backend}")
+        except Exception as e:
+            QMessageBox.warning(self, "YARA Hatası", str(e))
+
     def _open_eml_dialog(self):
-        fp, _ = QFileDialog.getOpenFileName(self, "E-posta (.eml) Seç", "", "E-posta (*.eml);;Tüm Dosyalar (*.*)")
+        fp, _ = QFileDialog.getOpenFileName(
+            self, "E-posta / Posta Kutusu Seç (.eml / .mbox / .pst)", "",
+            "E-posta (*.eml *.mbox *.pst *.ost);;Tüm Dosyalar (*.*)"
+        )
         if fp:
             self.load_eml(fp)
 
@@ -417,7 +435,13 @@ class FileAnalysisPage(QWidget):
         self.load_eml(p)
 
     def load_eml(self, path: str):
-        res = EmailForensicsService.parse_eml(path)
+        low = path.lower()
+        if low.endswith(".mbox"):
+            res = EmailForensicsService.parse_mbox(path)
+        elif low.endswith((".pst", ".ost")):
+            res = EmailForensicsService.parse_pst_ost(path)
+        else:
+            res = EmailForensicsService.parse_eml(path)
         hops = "\n  ".join(res["received_hops"]) if res["received_hops"] else "  (Yok)"
         auth = "\n  ".join(res["auth_results"]) if res["auth_results"] else "  (Bilgi yok)"
         urls = "\n  ".join(res["urls"]) if res["urls"] else "  (URL bulunamadı)"

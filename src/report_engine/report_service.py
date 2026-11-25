@@ -17,7 +17,7 @@ from src.evidence_engine.evidence_service import EvidenceService
 from src.integrity_engine.integrity_service import IntegrityService
 from src.usb_engine.usb_service import UsbService
 from src.timeline_engine.timeline_service import TimelineService
-from src.database.models import init_db, ForensicArtifact
+from src.database.models import init_db, ForensicArtifact, ArtifactBookmark
 
 _JINJA_ENV = Environment(autoescape=select_autoescape(enabled_extensions=("html", "xml"), default_for_string=True, default=True))
 
@@ -149,6 +149,24 @@ HTML_REPORT_TEMPLATE = _JINJA_ENV.from_string("""<!DOCTYPE html>
   </table>
   {% endif %}
 
+  {% if bookmarks %}
+  <h2>6. Analist Bulgu Etiketleri & İnceleme Notları (Bookmarks)</h2>
+  <table>
+    <thead><tr><th>Etiket</th><th>Modül</th><th>Öğe</th><th>Analist Notu</th><th>Uzman / Zaman</th></tr></thead>
+    <tbody>
+    {% for b in bookmarks %}
+      <tr>
+        <td class="{{ 'badge-warn' if b.tag in ('Şüpheli', 'Kritik IOC') else 'badge-ok' }}">{{ b.tag }}</td>
+        <td>{{ b.source_module }}</td>
+        <td class="mono">{{ b.item_label }}</td>
+        <td>{{ b.analyst_note }}</td>
+        <td>{{ b.analyst_name }} ({{ b.created_at }})</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
   <h2>Uzman Yorumu ve Değerlendirme (Objektif Bulgulardan Ayrıdır — SWGDE)</h2>
   <div class="box">{{ expert_notes }}</div>
 
@@ -224,6 +242,7 @@ class ReportService:
         ]
         timeline = tl_svc.collect_case_timeline(case_id=case.id)[:60]
         artifacts: List[Dict[str, Any]] = []
+        bookmarks: List[Dict[str, Any]] = []
         Session = init_db(self.db_path)
         with Session() as s:
             for a in s.query(ForensicArtifact).filter(ForensicArtifact.case_id == case.id).all()[:80]:
@@ -234,6 +253,15 @@ class ReportService:
                     "parser_name": a.parser_name,
                     "confidence": a.confidence,
                     "extracted_data": (a.extracted_data or "")[:160],
+                })
+            for bm in s.query(ArtifactBookmark).filter(ArtifactBookmark.case_id == case.id).all()[:60]:
+                bookmarks.append({
+                    "tag": bm.tag,
+                    "source_module": bm.source_module,
+                    "item_label": bm.item_label,
+                    "analyst_note": bm.analyst_note or "-",
+                    "analyst_name": bm.analyst_name,
+                    "created_at": bm.created_at.strftime("%Y-%m-%d %H:%M") if bm.created_at else "-",
                 })
 
         default_notes = expert_notes.strip() or (
@@ -260,6 +288,7 @@ class ReportService:
             "usb_records": usbs,
             "timeline": timeline,
             "artifacts": artifacts,
+            "bookmarks": bookmarks,
             "expert_notes": default_notes,
             "limitations": default_limits,
         }

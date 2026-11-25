@@ -96,6 +96,16 @@ class ReportsPage(QWidget):
         btn_row.addWidget(pdf_btn)
         c_lay.addLayout(btn_row)
 
+        exp2_row = QHBoxLayout()
+        stix_btn = QPushButton("STIX 2.1 IOC")
+        stix_btn.clicked.connect(self._export_stix2)
+        exp2_row.addWidget(stix_btn)
+
+        csv_btn = QPushButton("CSV Zaman Çizelgesi")
+        csv_btn.clicked.connect(self._export_csv_timeline)
+        exp2_row.addWidget(csv_btn)
+        c_lay.addLayout(exp2_row)
+
         # X.509 RSA-PSS Cryptographic Signing Section
         sig_title = QLabel("Kriptografik X.509 Rapor İmzalama (RSA-PSS)")
         sig_title.setObjectName("sectionTitle")
@@ -173,6 +183,26 @@ class ReportsPage(QWidget):
             return
         self.report_svc.export_pdf(path, **self._gather_kwargs())
         QMessageBox.information(self, "PDF Rapor Hazır", f"PDF raporu oluşturuldu:\n{path}")
+
+    def _export_stix2(self):
+        from src.core.orchestrator import AnalysisOrchestrator
+        cid = self.case_combo.currentData() or 1
+        path, _ = QFileDialog.getSaveFileName(self, "STIX 2.1 IOC Paketi Kaydet", "outputs/adli_stix2.json", "STIX JSON (*.json)")
+        if not path:
+            return
+        AnalysisOrchestrator(db_path=self.db_path).export_stix2_bundle(cid, path)
+        QMessageBox.information(self, "STIX 2.1 Hazır", f"STIX 2.1 IOC paketi kaydedildi:\n{path}")
+
+    def _export_csv_timeline(self):
+        from src.core.orchestrator import AnalysisOrchestrator
+        from src.timeline_engine.timeline_service import TimelineService
+        cid = self.case_combo.currentData() or 1
+        path, _ = QFileDialog.getSaveFileName(self, "CSV Zaman Çizelgesi Kaydet", "outputs/zaman_cizelgesi.csv", "CSV (*.csv)")
+        if not path:
+            return
+        events = TimelineService(db_path=self.db_path).collect_case_timeline(case_id=cid)
+        AnalysisOrchestrator.export_csv(events, path)
+        QMessageBox.information(self, "CSV Hazır", f"Excel uyumlu UTF-8 BOM CSV kaydedildi:\n{path}")
 
     def set_operator(self, full_name: str, role: str) -> None:
         self._active_user = full_name

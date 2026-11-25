@@ -13,6 +13,8 @@ data/*.db
 *_key.pem
 data/.session_active.lock
 data/session_recovery.json
+data/sample_*/
+data/case_workspace/
 dist/
 build/
 *.egg-info/

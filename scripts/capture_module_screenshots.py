@@ -28,7 +28,8 @@ SCREENSHOT_FILES = [
     (11, "12_relations.png"),
     (12, "13_reports.png"),
     (13, "14_acquisition.png"),
-    (14, "15_settings.png"),
+    (14, "15_mobile_cloud_hunt.png"),
+    (15, "16_settings.png"),
 ]
 
 
@@ -105,6 +106,29 @@ def main() -> None:
             pix = win.grab()
             pix.save(str(out_dir / fname))
             print(f"Captured {fname} ({pix.width()}x{pix.height()})")
+
+        # Capture sub-tabs of Mobile, Cloud & Threat Hunt (FTS5 + CFReDS)
+        win.sidebar.select_page(14)
+        win.mobile_cloud_page.bookmarks.add_bookmark(
+            case_id=1,
+            tag="Kritik IOC",
+            source_module="Dosya & YARA Analizi",
+            item_label="tatil_fatura_ek.jpg (PE/MZ Exfil Payload)",
+            analyst_note="PowerShell_EncodedCommand + rclone drop URL dogrulandi.",
+            analyst_name="E. Kirmizi",
+        )
+        win.mobile_cloud_page.refresh_bookmarks()
+        win.mobile_cloud_page.tabs.setCurrentIndex(1)
+        for _ in range(5):
+            app.processEvents()
+        win.grab().save(str(out_dir / "15b_fts_bookmarks.png"))
+        print("Captured 15b_fts_bookmarks.png")
+
+        win.mobile_cloud_page.tabs.setCurrentIndex(2)
+        for _ in range(5):
+            app.processEvents()
+        win.grab().save(str(out_dir / "15c_cfreds_benchmark.png"))
+        print("Captured 15c_cfreds_benchmark.png")
 
         win.close()
 

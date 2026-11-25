@@ -14,5 +14,7 @@ Bağımlılıklar ve lisansları proje ilkeleri gereği doğrulanmıştır. Yaln
 | Matplotlib | PSF / BSD | onaylı | Görselleştirme desteği |
 | NetworkX | BSD-3-Clause | onaylı | Evidence Relations grafik düzeni ve düğüm/kenar topolojisi |
 | pytest | MIT | onaylı | Otomatik birim ve arayüz test doğrulaması |
+| PyYAML *(opsiyonel)* | MIT | onaylı | Sigma YAML tehdit avcılığı kural ayrıştırma (yoksa yerleşik fallback kullanılır) |
+| yara-python *(opsiyonel)* | Apache-2.0 | onaylı | Gerçek `.yar`/`.yara` kural derleme ve tarama (yoksa saf Python motor kullanılır) |
 
 > **Not:** Autopsy, FTK, EnCase gibi ticari yazılımlara bağımlılık yoktur. The Sleuth Kit, Volatility ve Plaso ana analiz motoru olarak kullanılmamaktadır; tüm disk, Registry Hive, EVTX, USB, tarayıcı, dosya ve bellek analiz motorları Python standart kütüphaneleriyle özgün olarak geliştirilmiştir.

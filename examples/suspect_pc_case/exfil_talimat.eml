@@ -1,0 +1,21 @@
+From: attacker@evil-c2.example
+To: ahmet.k@sirket.example
+Subject: Acil Fatura Onayi - Q4 Exfil
+Date: Fri, 20 Nov 2026 19:35:00 +0000
+Message-ID: <20261120193500.99@evil-c2.example>
+Authentication-Results: mx.sirket.example; spf=fail smtp.mailfrom=evil-c2.example; dkim=none
+Received: from [185.220.101.44] by mx.sirket.example with ESMTP; Fri, 20 Nov 2026 19:35:00 +0000
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="FORENSIC_BOUNDARY_01"
+
+--FORENSIC_BOUNDARY_01
+Content-Type: text/plain; charset="utf-8"
+
+Merhaba, odeme dekontunu https://c2-drop.example/invoice?id=44 adresinden dogrulayin.
+--FORENSIC_BOUNDARY_01
+Content-Type: application/zip; name="fatura_ek.zip"
+Content-Disposition: attachment; filename="fatura_ek.zip"
+Content-Transfer-Encoding: base64
+
+UEsDBAoAAAAAAP//AAAAAAAAAAAAAAAA
+--FORENSIC_BOUNDARY_01--

@@ -1,5 +1,6 @@
 """Main application shell window coordinating topbar, sidebar, pages, statusbar, and crash recovery."""
 
+import os
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QStackedWidget, QApplication
@@ -73,6 +74,7 @@ class MainWindow(QMainWindow):
 
         # Enforce flagship Dark Forensic theme unconditionally
         self.set_theme("dark")
+        self._preload_case_workspace(data_dir)
 
         if self.recovery.unclean_shutdown_detected:
             self.statusbar.set_recovery_notice(
@@ -101,7 +103,7 @@ class MainWindow(QMainWindow):
         from src.ui.pages.reports_page import ReportsPage
         from src.ui.pages.settings_page import SettingsPage
 
-        self.dashboard_page = DashboardPage()
+        self.dashboard_page = DashboardPage(db_path=self.db_path)
         self.cases_page = CasesPage(db_path=self.db_path)
         self.evidence_page = EvidencePage(db_path=self.db_path)
         self.integrity_page = IntegrityPage(db_path=self.db_path)
@@ -193,6 +195,44 @@ class MainWindow(QMainWindow):
         elif hasattr(page, "refresh_records"):
             page.refresh_records()
         self._save_checkpoint()
+
+    def _preload_case_workspace(self, data_dir: str) -> None:
+        """Populate analysis pages with the VAK-2026-084 suspect evidence bundle so no module opens empty."""
+        try:
+            from src.core.case_workspace import prepare_suspect_case_workspace
+            ws_dir = "examples/suspect_pc_case" if data_dir == "data" else os.path.join(data_dir, "case_workspace")
+            ws = prepare_suspect_case_workspace(ws_dir)
+
+            self.disk_page.load_image(ws["disk_image"])
+            self.windows_page.load_hive(ws["registry_hive"])
+            self.windows_page.load_evtx(ws["evtx_log"])
+            for art_p in ws["win_artifacts"].values():
+                self.windows_page.load_artifact_file(art_p)
+            self.windows_page.load_pcap(ws["pcap_file"])
+
+            self.browser_page.load_artifact(ws["browser_history"], browser_hint="Google Chrome", append=False)
+            self.browser_page.load_artifact(ws["browser_bookmarks"], browser_hint="Google Chrome", append=True)
+
+            self.memory_page._capture_live_processes()
+            self.memory_page.load_dump(ws["memory_dump"])
+
+            self.file_page.single_path.setText(ws["disguised_payload"])
+            self.file_page.analyze_file(ws["disguised_payload"])
+            self.file_page.scan_folder(ws["case_dir"])
+            self.file_page.load_eml(ws["eml_file"])
+
+            self.integrity_page.populate_precomputed_verification(
+                ws["disk_image"],
+                ws["disk_sha256"],
+                ws["disk_sha512"],
+                ws["disk_size"],
+            )
+            self.timeline_page.refresh_records()
+            self.relations_page.refresh_records()
+            self.reports_page.refresh_records()
+            self.dashboard_page.refresh_data()
+        except Exception:
+            pass
 
     def set_theme(self, theme_name: str = "dark"):
         # Application runs strictly in flagship dark mode

@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Adli Bilişim İnceleme Raporu - VAK-2026-084</title>
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #F5F5F7; color: #1D2733; margin: 28px; line-height: 1.5; }
+  .container { max-width: 980px; margin: auto; background: #FFFFFF; padding: 32px; border: 1px solid #D0D5DD; border-radius: 8px; }
+  h1 { color: #1D2733; border-bottom: 2px solid #315C85; padding-bottom: 10px; font-size: 22px; }
+  h2 { color: #315C85; margin-top: 26px; font-size: 16px; border-left: 4px solid #315C85; padding-left: 10px; }
+  .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #F9FAFB; padding: 14px; border: 1px solid #EAECF0; border-radius: 6px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+  th { background: #1D2733; color: #FFFFFF; text-align: left; padding: 8px; }
+  td { border-bottom: 1px solid #EAECF0; padding: 8px; vertical-align: top; }
+  tr:nth-child(even) td { background: #F9FAFB; }
+  .mono { font-family: Consolas, monospace; font-size: 11px; word-break: break-all; }
+  .badge-ok { color: #26845B; font-weight: bold; }
+  .badge-warn { color: #B9822D; font-weight: bold; }
+  .box { background: #F9FAFB; border: 1px solid #D0D5DD; padding: 12px; border-radius: 6px; font-size: 13px; white-space: pre-wrap; }
+  .footer { margin-top: 28px; font-size: 11px; color: #667085; border-top: 1px solid #EAECF0; padding-top: 10px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>ADLİ BİLİŞİM İNCELEME RAPORU</h1>
+  <div class="meta-grid">
+    <div><strong>Vaka Numarası:</strong> VAK-2026-084</div>
+    <div><strong>Rapor Tarihi (UTC):</strong> 2026-11-25 16:12:59 UTC</div>
+    <div><strong>Soruşturma Başlığı:</strong> Yetkisiz Veri Sızıntısı ve USB Cihaz İncelemesi</div>
+    <div><strong>İnceleme Sorumlusu:</strong> Adli Bilişim Uzmanı E. Kırmızı</div>
+    <div><strong>Birim / Kurum:</strong> Siber Olay Müdahale ve Adli İnceleme Birimi</div>
+    <div><strong>Uygulama Sürümü:</strong> v1.0.0-dfir</div>
+  </div>
+
+  
+  <h2>1. Delil Envanteri ve Kriptografik Bütünlük</h2>
+  <table>
+    <thead><tr><th>Delil No</th><th>Tür</th><th>Marka / Model</th><th>Seri No</th><th>Yazma Engelleyici</th><th>SHA-256 Özeti</th></tr></thead>
+    <tbody>
+    
+      <tr>
+        <td><strong>EVD-2026-003</strong></td>
+        <td>Taşınabilir NVMe SSD</td>
+        <td>Samsung Portable SSD T7 500GB</td>
+        <td class="mono">S5B4NX0R812345K</td>
+        <td>Evet</td>
+        <td class="mono">15e2b0d3c33891ebb0f1ef609ec419420c20e320ce94c65fbc8c3312448eb225</td>
+      </tr>
+    
+      <tr>
+        <td><strong>EVD-2026-002</strong></td>
+        <td>USB Flash Bellek</td>
+        <td>Kingston DataTraveler 3.0</td>
+        <td class="mono">0014D1185292F9B0B71B08C7</td>
+        <td>Evet</td>
+        <td class="mono">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</td>
+      </tr>
+    
+      <tr>
+        <td><strong>EVD-2026-001</strong></td>
+        <td>USB Flash Bellek</td>
+        <td>SanDisk Cruzer Blade USB 2.0</td>
+        <td class="mono">4C530001250912117441</td>
+        <td>Evet</td>
+        <td class="mono">7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069</td>
+      </tr>
+    
+    </tbody>
+  </table>
+  
+
+  
+  <h2>2. Delil Muhafaza Zinciri (Chain of Custody)</h2>
+  <table>
+    <thead><tr><th>Zaman (UTC)</th><th>Delil No</th><th>İşlem</th><th>Teslim Eden</th><th>Teslim Alan</th><th>Doğrulama</th></tr></thead>
+    <tbody>
+    
+      <tr>
+        <td class="mono">2026-11-25 02:12:57</td>
+        <td>EVD-2026-003</td>
+        <td>İncelemeye Çıktı</td>
+        <td>Delil Kasası #01</td>
+        <td>Adli Bilişim Uzmanı E. Kırmızı</td>
+        <td class="badge-ok">Doğrulandı</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-24 16:12:57</td>
+        <td>EVD-2026-002</td>
+        <td>Teslim Alındı &amp; Hash Doğrulandı</td>
+        <td>Olay Yeri Müdahale Ekibi</td>
+        <td>Adli Bilişim Uzmanı E. Kırmızı</td>
+        <td class="badge-ok">Doğrulandı</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-23 18:12:57</td>
+        <td>EVD-2026-001</td>
+        <td>İmaj Alındı &amp; Hash Doğrulandı</td>
+        <td>Adli Bilişim Uzmanı E. Kırmızı</td>
+        <td>Çalışma Kopyası Sunucusu (Salt Okunur)</td>
+        <td class="badge-ok">Doğrulandı</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-23 16:12:57</td>
+        <td>EVD-2026-001</td>
+        <td>Teslim Alındı</td>
+        <td>Güvenlik Amiri M. Demir</td>
+        <td>Adli Bilişim Uzmanı E. Kırmızı</td>
+        <td class="badge-ok">Doğrulandı</td>
+      </tr>
+    
+    </tbody>
+  </table>
+  
+
+  
+  <h2>3. USB Cihaz ve Artefakt Bulguları</h2>
+  <table>
+    <thead><tr><th>Durum</th><th>Cihaz Adı</th><th>VID / PID</th><th>Seri No</th><th>Kullanıcı</th><th>Son Bağlantı (UTC)</th><th>Kaynak</th></tr></thead>
+    <tbody>
+    
+      <tr>
+        <td class="badge-warn">Şüpheli Cihaz</td>
+        <td>USB Rubber Ducky / BadUSB HID Keystroke Injector</td>
+        <td class="mono">03EB:2043</td>
+        <td class="mono">000000000001</td>
+        <td>SYSTEM</td>
+        <td class="mono">2026-11-23 15:12:57</td>
+        <td class="mono">SYSTEM\CurrentControlSet\Enum\USB\VID_03EB&amp;PID_2043\000000000001</td>
+      </tr>
+    
+      <tr>
+        <td class="badge-ok">Doğrulandı</td>
+        <td>Kingston DataTraveler 3.0</td>
+        <td class="mono">0951:1666</td>
+        <td class="mono">0014D1185292F9B0B71B08C7</td>
+        <td>AhmetK (Finans)</td>
+        <td class="mono">2026-11-25 08:12:57</td>
+        <td class="mono">SYSTEM\CurrentControlSet\Enum\USBSTOR\Disk&amp;Ven_Kingston&amp;Prod_DataTraveler_3.0&amp;Rev_PMAP\0014D1185292F9B0B71B08C7</td>
+      </tr>
+    
+      <tr>
+        <td class="badge-ok">İnceleniyor</td>
+        <td>Samsung PSSD T7 SCSI Disk Device</td>
+        <td class="mono">04E8:61F5</td>
+        <td class="mono">S5B4NX0R812345K</td>
+        <td>MehmetS (Sistem Yöneticisi)</td>
+        <td class="mono">2026-11-25 04:02:57</td>
+        <td class="mono">SYSTEM\CurrentControlSet\Enum\USBSTOR\Disk&amp;Ven_Samsung&amp;Prod_PSSD_T7&amp;Rev_0\S5B4NX0R812345K</td>
+      </tr>
+    
+      <tr>
+        <td class="badge-ok">Normal</td>
+        <td>SanDisk Cruzer Blade USB Device</td>
+        <td class="mono">0781:5567</td>
+        <td class="mono">4C530001250912117441</td>
+        <td>AhmetK (Finans)</td>
+        <td class="mono">2026-11-24 14:12:57</td>
+        <td class="mono">SYSTEM\CurrentControlSet\Enum\USBSTOR\Disk&amp;Ven_SanDisk&amp;Prod_Cruzer_Blade&amp;Rev_1.26\4C530001250912117441</td>
+      </tr>
+    
+      <tr>
+        <td class="badge-ok">İnceleniyor</td>
+        <td>Kingston DataTraveler 3.0</td>
+        <td class="mono">None:None</td>
+        <td class="mono">E0D55EA57410E9B159D80011&amp;0</td>
+        <td>-</td>
+        <td class="mono">-</td>
+        <td class="mono">SYSTEM\CurrentControlSet\Enum\USBSTOR\Disk&amp;Ven_Kingston&amp;Prod_DataTraveler_3.0&amp;Rev_PMAP\E0D55EA57410E9B159D80011&amp;0</td>
+      </tr>
+    
+    </tbody>
+  </table>
+  
+
+  
+  <h2>4. Birleştirilmiş Olay Zaman Çizelgesi (UTC)</h2>
+  <table>
+    <thead><tr><th>Zaman (UTC)</th><th>Olay Türü</th><th>Kullanıcı</th><th>Açıklama</th><th>Güvenilirlik</th></tr></thead>
+    <tbody>
+    
+      <tr>
+        <td class="mono">2026-03-15 09:24:12</td>
+        <td>Artefakt: Extension Spoofing + YARA</td>
+        <td>-</td>
+        <td>{&#34;title&#34;: &#34;Sahte Uzantı &amp; YARA: tatil_fatura_ek.jpg&#34;, &#34;real_signature&#34;: &#34;PE Executable (EXE/DLL)&#34;, &#34;sha256&#34;: &#34;72bd4e5f789cb93e98fa06cdd348a8f19d1d300cd72007143a5c66ff6a479d63&#34;, &#34;rules&#34;: [&#34;PowerShell_E</td>
+        <td>%100 (FileAnalysisService+YaraStyleScanner)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-03-15 10:05:40</td>
+        <td>Artefakt: Memory IOC &amp; EPROCESS</td>
+        <td>-</td>
+        <td>{&#34;title&#34;: &#34;Bellekte C2 IP &amp; PE Enjeksiyon İzi&#34;, &#34;pe_modules&#34;: 1, &#34;eprocess_candidates&#34;: 1, &#34;iocs&#34;: [&#34;http://198.51.100.42:8080/beacon.bin&#34;, &#34;198.51.100.42&#34;, &#34;192.168.1.50&#34;]}</td>
+        <td>%90 (MemoryForensicsEngine)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-03-15 10:12:05</td>
+        <td>Artefakt: DNS/HTTP C2 + Phishing EML</td>
+        <td>-</td>
+        <td>{&#34;title&#34;: &#34;Şüpheli Ağ İletişimi &amp; E-posta (Acil Fatura Onayi - Q4 Exfil)&#34;, &#34;from&#34;: &#34;attacker@evil-c2.example&#34;, &#34;dns&#34;: [&#34;exfil.evil-c2.example&#34;], &#34;http_iocs&#34;: [&#34;/stage2.bin&#34;, &#34;c2-drop.example&#34;]}</td>
+        <td>%95 (EmailNetworkForensicsService)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-17 21:05:00</td>
+        <td>Artefakt: Disk/MFT</td>
+        <td>-</td>
+        <td>{&#34;filename&#34;: &#34;silinen_kanit.jpg&#34;, &#34;size&#34;: 45, &#34;is_deleted&#34;: true, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+        <td>%95 (DiskForensicsEngine)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-18 09:12:00</td>
+        <td>Artefakt: Disk/MFT</td>
+        <td>-</td>
+        <td>{&#34;filename&#34;: &#34;gizli_rapor.pdf&#34;, &#34;size&#34;: 2105, &#34;is_deleted&#34;: false, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+        <td>%95 (DiskForensicsEngine)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-19 10:00:00</td>
+        <td>Artefakt: Disk/MFT</td>
+        <td>-</td>
+        <td>{&#34;filename&#34;: &#34;musteri_export.xlsx&#34;, &#34;size&#34;: 27, &#34;is_deleted&#34;: false, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+        <td>%95 (DiskForensicsEngine)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-20 02:15:00</td>
+        <td>Artefakt: Disk/MFT</td>
+        <td>-</td>
+        <td>{&#34;filename&#34;: &#34;silinen_betik.ps1&#34;, &#34;size&#34;: 61, &#34;is_deleted&#34;: true, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+        <td>%95 (DiskForensicsEngine)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-20 13:12:57</td>
+        <td>USB İlk Bağlantı</td>
+        <td>AhmetK (Finans)</td>
+        <td>SanDisk Cruzer Blade USB Device (VID_0781&amp;PID_5567 | Seri: 4C530001250912117441)</td>
+        <td>Yüksek (Registry + DeviceClasses)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-20 14:30:00</td>
+        <td>Artefakt: Disk/MFT</td>
+        <td>-</td>
+        <td>{&#34;filename&#34;: &#34;$MFT&#34;, &#34;size&#34;: 12288, &#34;is_deleted&#34;: false, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+        <td>%95 (DiskForensicsEngine)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-20 14:30:00</td>
+        <td>Artefakt: Disk/MFT</td>
+        <td>-</td>
+        <td>{&#34;filename&#34;: &#34;.&#34;, &#34;size&#34;: 0, &#34;is_deleted&#34;: false, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+        <td>%95 (DiskForensicsEngine)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-20 14:30:00</td>
+        <td>Artefakt: Disk/MFT</td>
+        <td>-</td>
+        <td>{&#34;filename&#34;: &#34;Users&#34;, &#34;size&#34;: 0, &#34;is_deleted&#34;: false, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+        <td>%95 (DiskForensicsEngine)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-20 19:35:00</td>
+        <td>Artefakt: Email/EML</td>
+        <td>-</td>
+        <td>{&#34;from&#34;: &#34;attacker@evil-c2.example&#34;, &#34;to&#34;: &#34;ahmet.k@sirket.example&#34;, &#34;urls&#34;: [&#34;https://c2-drop.example/invoice?id=44&#34;]}</td>
+        <td>%95 (EmailForensicsService)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-22 09:12:57</td>
+        <td>USB İlk Bağlantı</td>
+        <td>AhmetK (Finans)</td>
+        <td>Kingston DataTraveler 3.0 (VID_0951&amp;PID_1666 | Seri: 0014D1185292F9B0B71B08C7)</td>
+        <td>Yüksek (Registry + DeviceClasses)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-23 15:12:57</td>
+        <td>USB İlk Bağlantı</td>
+        <td>SYSTEM</td>
+        <td>USB Rubber Ducky / BadUSB HID Keystroke Injector (VID_03EB&amp;PID_2043 | Seri: 000000000001)</td>
+        <td>Yüksek (Registry + DeviceClasses)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-23 15:12:57</td>
+        <td>USB Son Bağlantı</td>
+        <td>SYSTEM</td>
+        <td>USB Rubber Ducky / BadUSB HID Keystroke Injector | Sürücü: -</td>
+        <td>Yüksek (Registry)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-23 15:27:57</td>
+        <td>USB Çıkarılma</td>
+        <td>SYSTEM</td>
+        <td>USB Rubber Ducky / BadUSB HID Keystroke Injector bağlantısı kesildi.</td>
+        <td>Orta (Sistem Durumu)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-23 16:12:57</td>
+        <td>Muhafaza: Teslim Alındı</td>
+        <td>Adli Bilişim Uzmanı E. Kırmızı</td>
+        <td>Güvenlik Amiri M. Demir -&gt; Adli Bilişim Uzmanı E. Kırmızı | Yöntem: Mühürlü Delil Torbası #TB-991</td>
+        <td>Yüksek (Doğrulanmış Zincir)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-23 16:12:57</td>
+        <td>Denetim: Vaka Oluşturuldu</td>
+        <td>Adli Bilişim Uzmanı E. Kırmızı</td>
+        <td>VAK-2026-084 numaralı soruşturma açıldı. Delil muhafaza zinciri başlatıldı.</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-23 17:12:57</td>
+        <td>Denetim: Delil Kabul &amp; Hash Doğrulama</td>
+        <td>Adli Bilişim Uzmanı E. Kırmızı</td>
+        <td>EVD-2026-001 (SanDisk Cruzer) kabul edildi. SHA-256 doğrulandı.</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-23 18:12:57</td>
+        <td>Muhafaza: İmaj Alındı &amp; Hash Doğrulandı</td>
+        <td>Çalışma Kopyası Sunucusu (Salt Okunur)</td>
+        <td>Adli Bilişim Uzmanı E. Kırmızı -&gt; Çalışma Kopyası Sunucusu (Salt Okunur) | Yöntem: RAW Bitstream İmaj (.dd)</td>
+        <td>Yüksek (Doğrulanmış Zincir)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-24 14:12:57</td>
+        <td>USB Son Bağlantı</td>
+        <td>AhmetK (Finans)</td>
+        <td>SanDisk Cruzer Blade USB Device | Sürücü: E:</td>
+        <td>Yüksek (Registry)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-24 14:27:57</td>
+        <td>USB Çıkarılma</td>
+        <td>AhmetK (Finans)</td>
+        <td>SanDisk Cruzer Blade USB Device bağlantısı kesildi.</td>
+        <td>Orta (Sistem Durumu)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-24 16:12:57</td>
+        <td>Muhafaza: Teslim Alındı &amp; Hash Doğrulandı</td>
+        <td>Adli Bilişim Uzmanı E. Kırmızı</td>
+        <td>Olay Yeri Müdahale Ekibi -&gt; Adli Bilişim Uzmanı E. Kırmızı | Yöntem: Fiziksel Teslim</td>
+        <td>Yüksek (Doğrulanmış Zincir)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-24 16:12:57</td>
+        <td>Denetim: USBSTOR Kayıtları Ayrıştırıldı</td>
+        <td>Adli Bilişim Uzmanı E. Kırmızı</td>
+        <td>SYSTEM Registry kovanı ayrıştırıldı. 4 adet USB cihazı tespit edildi.</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 02:12:57</td>
+        <td>Muhafaza: İncelemeye Çıktı</td>
+        <td>Adli Bilişim Uzmanı E. Kırmızı</td>
+        <td>Delil Kasası #01 -&gt; Adli Bilişim Uzmanı E. Kırmızı | Yöntem: Atola TaskForce E01</td>
+        <td>Yüksek (Doğrulanmış Zincir)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 02:12:57</td>
+        <td>USB İlk Bağlantı</td>
+        <td>MehmetS (Sistem Yöneticisi)</td>
+        <td>Samsung PSSD T7 SCSI Disk Device (VID_04E8&amp;PID_61F5 | Seri: S5B4NX0R812345K)</td>
+        <td>Yüksek (Registry + DeviceClasses)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 04:02:57</td>
+        <td>USB Son Bağlantı</td>
+        <td>MehmetS (Sistem Yöneticisi)</td>
+        <td>Samsung PSSD T7 SCSI Disk Device | Sürücü: G:</td>
+        <td>Yüksek (Registry)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 04:10:57</td>
+        <td>USB Çıkarılma</td>
+        <td>MehmetS (Sistem Yöneticisi)</td>
+        <td>Samsung PSSD T7 SCSI Disk Device bağlantısı kesildi.</td>
+        <td>Orta (Sistem Durumu)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 08:12:57</td>
+        <td>USB Son Bağlantı</td>
+        <td>AhmetK (Finans)</td>
+        <td>Kingston DataTraveler 3.0 | Sürücü: F:</td>
+        <td>Yüksek (Registry)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 08:22:57</td>
+        <td>USB Çıkarılma</td>
+        <td>AhmetK (Finans)</td>
+        <td>Kingston DataTraveler 3.0 bağlantısı kesildi.</td>
+        <td>Orta (Sistem Durumu)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 13:12:57</td>
+        <td>Denetim: Şüpheli Cihaz Tespiti</td>
+        <td>Adli Bilişim Uzmanı E. Kırmızı</td>
+        <td>VID_03EB&amp;PID_2043 (BadUSB) anomalisi işaretlendi ve öncelikli analiz sırasına alındı.</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 16:12:58</td>
+        <td>Denetim: Canlı USB Taraması Tamamlandı</td>
+        <td>Canlı Analiz Motoru</td>
+        <td>Canlı sistemden 1 adet USBSTOR kaydı salt-okunur çıkarıldı.</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 16:12:59</td>
+        <td>Denetim: Ingest Tamamlandı (ntfs_disk)</td>
+        <td>AnalysisOrchestrator</td>
+        <td>suspect_usb_disk.dd -&gt; 7 artefakt (0.0016s)</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 16:12:59</td>
+        <td>Denetim: Ingest Tamamlandı (file_threat)</td>
+        <td>AnalysisOrchestrator</td>
+        <td>SYSTEM.hiv -&gt; 1 artefakt (0.0082s)</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 16:12:59</td>
+        <td>Denetim: Ingest Tamamlandı (evtx_logs)</td>
+        <td>AnalysisOrchestrator</td>
+        <td>Security.evtx -&gt; 0 artefakt (0.0011s)</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 16:12:59</td>
+        <td>Denetim: Ingest Tamamlandı (file_threat)</td>
+        <td>AnalysisOrchestrator</td>
+        <td>Chrome_History.sqlite -&gt; 1 artefakt (0.0105s)</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 16:12:59</td>
+        <td>Denetim: Ingest Tamamlandı (file_threat)</td>
+        <td>AnalysisOrchestrator</td>
+        <td>suspect_memory.dmp -&gt; 1 artefakt (0.0127s)</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 16:12:59</td>
+        <td>Denetim: Ingest Tamamlandı (file_threat)</td>
+        <td>AnalysisOrchestrator</td>
+        <td>tatil_fatura_ek.jpg -&gt; 1 artefakt (0.0067s)</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 16:12:59</td>
+        <td>Denetim: Ingest Tamamlandı (eml_email)</td>
+        <td>AnalysisOrchestrator</td>
+        <td>exfil_talimat.eml -&gt; 1 artefakt (0.0062s)</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+      <tr>
+        <td class="mono">2026-11-25 16:12:59</td>
+        <td>Denetim: Ingest Tamamlandı (pcap_network)</td>
+        <td>AnalysisOrchestrator</td>
+        <td>suspect_capture.pcap -&gt; 1 artefakt (0.0007s)</td>
+        <td>Yüksek (Uygulama Kaydı)</td>
+      </tr>
+    
+    </tbody>
+  </table>
+  
+
+  
+  <h2>5. Çoklu Modül Artefakt & IOC Bulguları (Disk / EVTX / Bellek / YARA / E-posta)</h2>
+  <table>
+    <thead><tr><th>Tür</th><th>Zaman (UTC)</th><th>Kaynak</th><th>Ayrıştırıcı</th><th>Ayrıntı / Bulgu</th></tr></thead>
+    <tbody>
+    
+      <tr>
+        <td><strong>Disk/MFT</strong></td>
+        <td class="mono">2026-11-20 14:30:00</td>
+        <td class="mono">\$MFT</td>
+        <td>DiskForensicsEngine (%95)</td>
+        <td>{&#34;filename&#34;: &#34;$MFT&#34;, &#34;size&#34;: 12288, &#34;is_deleted&#34;: false, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+      </tr>
+    
+      <tr>
+        <td><strong>Disk/MFT</strong></td>
+        <td class="mono">2026-11-20 14:30:00</td>
+        <td class="mono">\.</td>
+        <td>DiskForensicsEngine (%95)</td>
+        <td>{&#34;filename&#34;: &#34;.&#34;, &#34;size&#34;: 0, &#34;is_deleted&#34;: false, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+      </tr>
+    
+      <tr>
+        <td><strong>Disk/MFT</strong></td>
+        <td class="mono">2026-11-20 14:30:00</td>
+        <td class="mono">\Users</td>
+        <td>DiskForensicsEngine (%95)</td>
+        <td>{&#34;filename&#34;: &#34;Users&#34;, &#34;size&#34;: 0, &#34;is_deleted&#34;: false, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+      </tr>
+    
+      <tr>
+        <td><strong>Disk/MFT</strong></td>
+        <td class="mono">2026-11-18 09:12:00</td>
+        <td class="mono">\Users\gizli_rapor.pdf</td>
+        <td>DiskForensicsEngine (%95)</td>
+        <td>{&#34;filename&#34;: &#34;gizli_rapor.pdf&#34;, &#34;size&#34;: 2105, &#34;is_deleted&#34;: false, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+      </tr>
+    
+      <tr>
+        <td><strong>Disk/MFT</strong></td>
+        <td class="mono">2026-11-19 10:00:00</td>
+        <td class="mono">\Users\musteri_export.xlsx</td>
+        <td>DiskForensicsEngine (%95)</td>
+        <td>{&#34;filename&#34;: &#34;musteri_export.xlsx&#34;, &#34;size&#34;: 27, &#34;is_deleted&#34;: false, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+      </tr>
+    
+      <tr>
+        <td><strong>Disk/MFT</strong></td>
+        <td class="mono">2026-11-17 21:05:00</td>
+        <td class="mono">\Users\silinen_kanit.jpg</td>
+        <td>DiskForensicsEngine (%95)</td>
+        <td>{&#34;filename&#34;: &#34;silinen_kanit.jpg&#34;, &#34;size&#34;: 45, &#34;is_deleted&#34;: true, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+      </tr>
+    
+      <tr>
+        <td><strong>Disk/MFT</strong></td>
+        <td class="mono">2026-11-20 02:15:00</td>
+        <td class="mono">\Users\silinen_betik.ps1</td>
+        <td>DiskForensicsEngine (%95)</td>
+        <td>{&#34;filename&#34;: &#34;silinen_betik.ps1&#34;, &#34;size&#34;: 61, &#34;is_deleted&#34;: true, &#34;timestomping_suspect&#34;: false, &#34;ads_streams&#34;: []}</td>
+      </tr>
+    
+      <tr>
+        <td><strong>File/Inspection</strong></td>
+        <td class="mono">-</td>
+        <td class="mono">SYSTEM.hiv</td>
+        <td>FileAnalysisService+YaraStyleScanner (%100)</td>
+        <td>{&#34;sha256&#34;: &#34;73010f580e798038c6ba1766e0dd46a23f12a66f39a1cc9605168c16af4d6c5b&#34;, &#34;signature&#34;: &#34;Windows Registry Hive&#34;, &#34;yara_hits&#34;: []}</td>
+      </tr>
+    
+      <tr>
+        <td><strong>YARA/File</strong></td>
+        <td class="mono">-</td>
+        <td class="mono">Chrome_History.sqlite</td>
+        <td>FileAnalysisService+YaraStyleScanner (%100)</td>
+        <td>{&#34;sha256&#34;: &#34;dd69127d927758b231383127697dd07644d3d47a090daf8b6ece73b2a805d457&#34;, &#34;signature&#34;: &#34;SQLite 3 Veritabanı&#34;, &#34;yara_hits&#34;: [&#34;Suspicious_Exfil_Tools&#34;]}</td>
+      </tr>
+    
+      <tr>
+        <td><strong>File/Inspection</strong></td>
+        <td class="mono">-</td>
+        <td class="mono">suspect_memory.dmp</td>
+        <td>FileAnalysisService+YaraStyleScanner (%100)</td>
+        <td>{&#34;sha256&#34;: &#34;6dfc6a9a782f297def4e49d227761963673abd793ad501da96fe25a04498bbd3&#34;, &#34;signature&#34;: &#34;Bilinmeyen / Ham Veri&#34;, &#34;yara_hits&#34;: []}</td>
+      </tr>
+    
+      <tr>
+        <td><strong>YARA/File</strong></td>
+        <td class="mono">-</td>
+        <td class="mono">tatil_fatura_ek.jpg</td>
+        <td>FileAnalysisService+YaraStyleScanner (%100)</td>
+        <td>{&#34;sha256&#34;: &#34;72bd4e5f789cb93e98fa06cdd348a8f19d1d300cd72007143a5c66ff6a479d63&#34;, &#34;signature&#34;: &#34;PE Executable (EXE/DLL)&#34;, &#34;yara_hits&#34;: [&#34;PowerShell_EncodedCommand&#34;</td>
+      </tr>
+    
+      <tr>
+        <td><strong>Email/EML</strong></td>
+        <td class="mono">2026-11-20 19:35:00</td>
+        <td class="mono">Acil Fatura Onayi - Q4 Exfil</td>
+        <td>EmailForensicsService (%95)</td>
+        <td>{&#34;from&#34;: &#34;attacker@evil-c2.example&#34;, &#34;to&#34;: &#34;ahmet.k@sirket.example&#34;, &#34;urls&#34;: [&#34;https://c2-drop.example/invoice?id=44&#34;]}</td>
+      </tr>
+    
+      <tr>
+        <td><strong>Network/PCAP</strong></td>
+        <td class="mono">-</td>
+        <td class="mono">2 paket</td>
+        <td>NetworkForensicsService (%90)</td>
+        <td>{&#34;dns_queries&#34;: 1, &#34;http_iocs&#34;: 2}</td>
+      </tr>
+    
+      <tr>
+        <td><strong>Extension Spoofing + YARA</strong></td>
+        <td class="mono">2026-03-15 09:24:12</td>
+        <td class="mono">Dosya &amp; YARA Analizi</td>
+        <td>FileAnalysisService+YaraStyleScanner (%100)</td>
+        <td>{&#34;title&#34;: &#34;Sahte Uzantı &amp; YARA: tatil_fatura_ek.jpg&#34;, &#34;real_signature&#34;: &#34;PE Executable (EXE/DLL)&#34;, &#34;sha256&#34;: &#34;72bd4e5f789cb93e98fa06cdd348a8f19d1d300cd72007143a</td>
+      </tr>
+    
+      <tr>
+        <td><strong>Memory IOC &amp; EPROCESS</strong></td>
+        <td class="mono">2026-03-15 10:05:40</td>
+        <td class="mono">RAM Bellek Analizi</td>
+        <td>MemoryForensicsEngine (%90)</td>
+        <td>{&#34;title&#34;: &#34;Bellekte C2 IP &amp; PE Enjeksiyon İzi&#34;, &#34;pe_modules&#34;: 1, &#34;eprocess_candidates&#34;: 1, &#34;iocs&#34;: [&#34;http://198.51.100.42:8080/beacon.bin&#34;, &#34;198.51.100.42&#34;, &#34;19</td>
+      </tr>
+    
+      <tr>
+        <td><strong>DNS/HTTP C2 + Phishing EML</strong></td>
+        <td class="mono">2026-03-15 10:12:05</td>
+        <td class="mono">Ağ &amp; E-posta Analizi</td>
+        <td>EmailNetworkForensicsService (%95)</td>
+        <td>{&#34;title&#34;: &#34;Şüpheli Ağ İletişimi &amp; E-posta (Acil Fatura Onayi - Q4 Exfil)&#34;, &#34;from&#34;: &#34;attacker@evil-c2.example&#34;, &#34;dns&#34;: [&#34;exfil.evil-c2.example&#34;], &#34;http_iocs&#34;: [&#34;</td>
+      </tr>
+    
+    </tbody>
+  </table>
+  
+
+  <h2>Uzman Yorumu ve Değerlendirme (Objektif Bulgulardan Ayrıdır — SWGDE)</h2>
+  <div class="box">VAK-2026-084 kapsamında incelenen şüpheli imajlarda USB flash bellek bağlantısının hemen ardından tatil_fatura_ek.jpg adı altında PE/MZ çalıştırılabilir zararlı yükü, Base64 kodlu PowerShell komutu ve rclone veri sızdırma aracı izi saptanmıştır. RAM dökümünde KDBG, EPROCESS adayları ve harici IP/URL IOC&#39;leri tespit edilmiştir.</div>
+
+  <h2>Yöntem, Araç Doğrulama ve Analiz Sınırlamaları</h2>
+  <div class="box">1. Bu yazılım donanımsal yazma engelleyici (hardware write-blocker) yerine geçmez.
+2. Kayıt defteri veya olay günlüklerinde eksik olan zaman damgaları tahmin edilmemiş, &#39;-&#39; olarak bırakılmıştır.
+3. Hukuki sorumluluk ve niyet değerlendirmesi bu teknik raporun kapsamı dışındadır.</div>
+
+  <div class="footer">
+    Bu rapor <strong>Adli Bilişim İnceleme Sistemi (v1.0.0-dfir)</strong> tarafından salt-okunur çalışma kopyaları üzerinden,
+    ISO/IEC 27037, NIST SP 800-86, SWGDE ve UNODC E4J Modül 6 ilkelerine uygun şekilde oluşturulmuştur.
+    Objektif teknik bulgular (Bölüm 1-4) ile uzman yorumu (Bölüm 5) birbirinden ayrılmıştır; doğrulanmamış zamansal ilişkiler kesin bulgu olarak sunulmamıştır.
+  </div>
+</div>
+</body>
+</html>

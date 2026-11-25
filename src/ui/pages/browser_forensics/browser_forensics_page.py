@@ -221,6 +221,10 @@ class BrowserAnalysisPage(QWidget):
                     self.detail_view.setPlainText("⚠️ UYARILAR:\n" + "\n".join(res["warnings"]))
                     self.count_badge.set_status("Kayıt Sınırı Uyarısı", "warning")
             self._apply_filters()
+            if self._history:
+                self._on_row_selected(self._history[0])
+            elif self._bookmarks:
+                self._on_row_selected(self._bookmarks[0])
         except Exception as e:
             QMessageBox.critical(self, "Tarayıcı Analiz Hatası", str(e))
 

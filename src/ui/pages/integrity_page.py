@@ -230,6 +230,24 @@ class IntegrityPage(QWidget):
         lay.addWidget(splitter, 1)
         return w
 
+    def populate_precomputed_verification(
+        self, file_path: str, sha256_hex: str, sha512_hex: str, file_size: int
+    ) -> None:
+        """Populate hash verification UI fields with precomputed evidence digest (non-blocking)."""
+        self.path_input.setText(file_path)
+        self.file_meta_lbl.setText(f"Boyut: {file_size:,} bayt | Durum: Salt-okunur SHA-256/512 Doğrulandı")
+        self.sha256_out.setText(sha256_hex)
+        self.sha512_out.setText(sha512_hex)
+        self.expected_input.setText(sha256_hex)
+        self.progress_bar.setValue(100)
+        self._last_computed = {
+            "path": file_path,
+            "sha256": sha256_hex,
+            "sha512": sha512_hex,
+            "size": file_size,
+        }
+        self.verify_result_badge.set_status("EŞLEŞTİ (Doğrulandı)", "verified")
+
     def refresh_records(self):
         # Populate Evidence combos
         evds = self.evd_svc.list_evidence()

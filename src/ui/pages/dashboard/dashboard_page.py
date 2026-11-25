@@ -82,10 +82,11 @@ class ForensicLabBanner(QFrame):
 class DashboardPage(QWidget):
     """Forensic overview page showing case metrics, audit logs, and evidence health."""
 
-    def __init__(self, parent=None):
+    def __init__(self, db_path: str = "data/forensics.db", parent=None):
         super().__init__(parent)
-        seed_database_if_empty()
-        self.Session = init_db()
+        self.db_path = db_path
+        seed_database_if_empty(db_path)
+        self.Session = init_db(db_path)
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(24, 20, 24, 20)

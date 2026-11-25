@@ -136,7 +136,23 @@ class WindowsForensicsPage(QWidget):
             if root_data:
                 root_item = self._add_reg_tree_node(None, root_data)
                 self.reg_tree.expandAll()
-                self._on_reg_node_clicked(root_item, 0)
+                # Prefer selecting the first child node that contains registry values so inspector is populated
+                chosen_item = root_item
+                for i in range(root_item.childCount()):
+                    ch = root_item.child(i)
+                    ch_data = ch.data(0, Qt.UserRole) or {}
+                    if ch_data.get("values"):
+                        chosen_item = ch
+                        break
+                    for j in range(ch.childCount()):
+                        gch = ch.child(j)
+                        if (gch.data(0, Qt.UserRole) or {}).get("values"):
+                            chosen_item = gch
+                            break
+                    if chosen_item is not root_item:
+                        break
+                self.reg_tree.setCurrentItem(chosen_item)
+                self._on_reg_node_clicked(chosen_item, 0)
             hive_arts = self.hive_parser.extract_hive_forensics_artifacts(parsed)
             if hive_arts:
                 for ha in hive_arts:

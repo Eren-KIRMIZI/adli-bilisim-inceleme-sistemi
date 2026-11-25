@@ -1,0 +1,21 @@
+{
+  "roots": {
+    "bookmark_bar": {
+      "type": "folder",
+      "children": [
+        {
+          "type": "url",
+          "name": "Kurumsal Portal",
+          "url": "https://intranet.corp.local",
+          "date_added": "13439671925000000"
+        },
+        {
+          "type": "url",
+          "name": "Harici Depolama",
+          "url": "https://transfer.example-cloud.test",
+          "date_added": "13439676644000000"
+        }
+      ]
+    }
+  }
+}

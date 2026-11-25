@@ -37,6 +37,82 @@ Uzman, şüpheli bilgisayarın salt-okunur disk imajını (`.E01` / `.dd`) veya 
 
 > *Adli Not:* Tarayıcı geçmişinde bir adresin bulunması tek başına kullanıcının niyetini veya eylemi bizzat yaptığını kanıtlamaz; diğer sistem izleriyle birlikte değerlendirilir.
 
+> **Örnek Vaka Çalışması & Üretilen Gerçek Çıktılar:** Şüpheli bir bilgisayara ait disk, Registry, EVTX, Prefetch/LNK/Jump List, tarayıcı, RAM dökümü, YARA/uzantı sahteciliği ve ağ paketlerinin uçtan uca incelenerek HTML/PDF rapor, CASE/UCO JSON-LD, Timesketch JSONL ve Sleuth Kit BodyFile çıktılarının alındığı çalışma için [VAK-2026-084 İnceleme Raporu](docs/CASE_STUDY_VAK_2026_084.md) ve [outputs/vak_2026_084/](outputs/vak_2026_084/) klasörüne bakın (`python scripts\run_real_investigation.py`).
+
+---
+
+## Modül Ekran Görüntüleri ve Adli Tespit Örnekleri
+
+### 01. Genel Bakış (Dashboard)
+![Genel Bakış (Dashboard)](docs/screenshots/01_dashboard.png)
+
+Tüm vaka metriklerini, canlı veritabanından hesaplanan kriptografik doğrulama yüzdesini (dairesel halka gösterge), adli denetim yoğunluğu eğrisini (`SplineAreaChart`) ve hash zincirli son sistem işlemlerini tek ekranda toplar.
+
+### 02. Vaka Yönetimi (Cases)
+![Vaka Yönetimi](docs/screenshots/02_cases.png)
+
+Her adli soruşturmayı benzersiz vaka numarası (`VAK-2026-084`), sorumlu uzman, kurum ve durum geçişleriyle (`open`, `in_progress`, `closed`, `archived`) izler; delillerin silinmesi yerine adli arşivleme ilkesini uygular.
+
+### 03. Delil Yönetimi (Evidence)
+![Delil Yönetimi](docs/screenshots/03_evidence.png)
+
+Teslim alınan fiziksel/mantıksal medya envanterini, seri numaralarını, kapasite bilgilerini, donanımsal yazma engelleyici (write-blocker) kullanım kaydını ve kabul anındaki SHA-256/SHA-512 özetlerini saklar.
+
+### 04. Bütünlük & Muhafaza Zinciri (Integrity & Chain of Custody)
+![Bütünlük ve Muhafaza Zinciri](docs/screenshots/04_integrity.png)
+
+Büyük disk ve bellek imajlarının SHA-256 ve SHA-512 özetlerini arayüzü kilitlemeden (`QThread`) hesaplar, referans hash değeriyle karşılaştırarak `EŞLEŞTİ` / `UYUŞMAZLIK` durumunu UNODC uyumlu Muhafaza Zinciri kaydına işler.
+
+### 05. Disk Forensics (MBR/GPT, NTFS/$MFT & File Carving)
+![Disk Forensics](docs/screenshots/05_disk_forensics.png)
+
+Saf Python `.E01` (EWF) / `.dd` okuyucusuyla bölüm tablosunu ve NTFS `$MFT` / `$UsnJrnl:$J` kayıtlarını ayrıştırır; `VAK-2026-084` incelemesinde aktif dosyaların yanında silinmiş `\Users\silinen_kanit.jpg` ve `\Users\silinen_betik.ps1` kayıtlarını ile ham sektör imzalarını çıkarmıştır.
+
+### 06. Windows & Ağ Forensics (Registry, EVTX, Prefetch, LNK & PCAP)
+![Windows Forensics](docs/screenshots/06_windows_forensics.png)
+
+Çevrimdışı `regf` Registry kovanlarını, `BinXml` kodlu `.evtx` güvenlik olaylarını, 8 zamanlı Prefetch (`.pf`), `.lnk` / OLE2 Jump List ve `$I` Geri Dönüşüm Kutusu izlerini ayrıca `.pcap` ağ yakalamalarını tek çalışma alanında çözümler.
+
+### 07. USB Cihaz Analizi (USBSTOR & HID/BadUSB Anomalileri)
+![USB Cihaz Analizi](docs/screenshots/07_usb_analysis.png)
+
+`USBSTOR` ve `MountedDevices` kayıtlarından bağlanan harici depolama aygıtlarının VID/PID, seri numarası, sürücü harfi ve kullanıcı SID bilgisini çıkarır; HID keystroke enjektörü / BadUSB gibi anormal aygıt sınıflarını şüpheli olarak işaretler.
+
+### 08. Tarayıcı Analizi (Chrome / Edge / Firefox)
+![Tarayıcı Analizi](docs/screenshots/08_browser_forensics.png)
+
+Salt-okunur `?mode=ro` SQLite kopyaları üzerinden ziyaret geçmişi, indirmeler (`rclone-v1.68-windows-amd64.zip`), arama sorguları (`usb data exfiltration powershell`) ve yer imlerini UTC zaman damgasıyla çıkarırken hassas çerez değerlerini gizlilik gereği maskeler.
+
+### 09. RAM Bellek Analizi (Memory Forensics)
+![RAM Bellek Analizi](docs/screenshots/09_memory_forensics.png)
+
+`PAGEDU64` / `HIBR` / `ELF` / `LiME` dökümlerinde `KDBG` adreslerini, bellek içi `MZ/PE` enjeksiyonlarını, `Proc` havuzu `EPROCESS` adaylarını (`beacon_svc.exe`), gömülü IP/URL IOC kalıntılarını ve canlı Windows süreçlerini analiz eder; kuruluysa Volatility 3 ile entegre çalışır.
+
+### 10. Dosya, İmza, YARA & Hex İnceleme
+![Dosya ve Hex İnceleme](docs/screenshots/10_file_analysis.png)
+
+Magic-byte imza analiziyle `.jpg` görünümlü `tatil_fatura_ek.jpg` dosyasının aslında `PE Executable (EXE/DLL)` olduğunu (`4D 5A` MZ başlığı) tespit eder ve yerleşik YARA-stili kurallarla `PowerShell_EncodedCommand` + `rclone` veri sızdırma dizgelerini yakalar.
+
+### 11. Olay Zaman Çizelgesi (Super-Timeline UTC)
+![Olay Zaman Çizelgesi](docs/screenshots/11_timeline.png)
+
+Disk (`$MFT`), USB, EVTX, Muhafaza Zinciri, Denetim ve YARA/RAM/Ağ bulgularını UTC saat diliminde birleştirerek saatlik aktivite yoğunluğu spline grafiği ve iki olay arası $\Delta t$ süre hesabı sunar.
+
+### 12. Bulgu İlişkilendirme Grafiği (Correlation Graph)
+![Bulgu İlişkilendirme](docs/screenshots/12_relations.png)
+
+Vaka, deliller, kullanıcı hesapları ve USB/artefakt izleri arasındaki bağlantıları görselleştirir; doğrulanabilir kayıtlı kanıtları **düz çizgiyle**, yalnızca zamansal yakınlığa dayanan hipotezleri ise **kesik çizgiyle** açıkça ayırır.
+
+### 13. Adli Rapor Oluşturucu (HTML & PDF)
+![Adli Rapor Oluşturucu](docs/screenshots/13_reports.png)
+
+Seçili vaka için delil SHA-256 özetlerini, muhafaza zincirini, USB/IOC bulgularını, uzman değerlendirmesini ve analiz sınırlamalarını içeren XSS korumalı HTML ve Türkçe karakter destekli PDF adli raporlarını canlı önizlemeyle üretir.
+
+### 14. Ayarlar & Açık Kaynak Lisans Kaydı
+![Ayarlar ve Lisanslar](docs/screenshots/14_settings.png)
+
+Sabit koyu laboratuvar arayüzü politikasını, SQLite WAL + atomik çökme kurtarma ilkelerini ve ticari/lisans uyumluluğu doğrulanmış açık kaynak kütüphane envanterini (`docs/LICENSES.md`) gösterir.
+
 #### 3. USB Cihaz İncelemesi (*Hangi harici bellekler takılmış?*)
 **USB Cihaz Analizi** modülü Windows Registry (`USBSTOR`, `MountedDevices`) kayıtlarından bağlanan aygıtları çıkarır:
 - Üretici, model, **VID/PID** ve donanım seri numarası,
@@ -201,5 +277,6 @@ Gerçek bir Windows 11 iş istasyonunda salt-okunur çalıştırılan çapraz do
 - [Veritabanı Şeması](docs/DATABASE_SCHEMA.md)
 - [Güvenlik ve Delil Bütünlüğü](docs/SECURITY.md)
 - [Test Stratejisi](docs/TESTING.md)
+- [Örnek Vaka Çalışması (VAK-2026-084)](docs/CASE_STUDY_VAK_2026_084.md)
 - [Gerçek Dünya Doğrulama Raporu](docs/REAL_WORLD_VALIDATION.md)
 - [Bağımlılık Lisansları](docs/LICENSES.md) (Yalnızca PSF, MIT, BSD, BSD-3-Clause ve LGPL-3.0 uyumlu paketler)

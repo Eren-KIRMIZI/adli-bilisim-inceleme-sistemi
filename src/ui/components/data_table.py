@@ -216,13 +216,13 @@ class ForensicDataTable(QTableWidget):
             current_w = header.sectionSize(col_idx)
             min_header_w = max(84, len(col_name) * 8 + 26)
             if col_name.lower() in ("durum", "status", "bütünlük", "doğrulama"):
-                # Calculate max badge width in this column
-                badge_max = min_header_w
+                # Calculate max badge width in this column with extra padding for pill borders
+                badge_max = max(min_header_w, 126)
                 for row_idx in range(min(self.rowCount(), 50)):
                     w = self.cellWidget(row_idx, col_idx)
                     if w:
-                        badge_max = max(badge_max, w.sizeHint().width() + 8)
-                header.resizeSection(col_idx, min(220, badge_max))
+                        badge_max = max(badge_max, w.sizeHint().width() + 20)
+                header.resizeSection(col_idx, min(240, badge_max))
             elif any(k in col_name.lower() for k in ["açıklama", "başlığı", "cihaz adı", "hedef", "kullanım", "tam yol", "url", "ayrıntılar"]):
                 header.resizeSection(col_idx, max(min_header_w, min(320, current_w + 18)))
             else:

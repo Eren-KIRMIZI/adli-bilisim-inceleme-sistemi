@@ -1,0 +1,118 @@
+{
+  "generated_utc": "2026-11-25T16:12:57.921673Z",
+  "case_number": "VAK-2026-084",
+  "part_a_host_windows_verification": {
+    "disk_image_sha256_integrity_service": "5cb9d12cb338c6a1ce48456df2f71a5218a8ee276cdc56faece12ed5aa166bc1",
+    "disk_image_sha256_powershell_get_filehash": "5cb9d12cb338c6a1ce48456df2f71a5218a8ee276cdc56faece12ed5aa166bc1",
+    "hash_cross_verification_matched": true,
+    "live_registry_supported": true,
+    "live_registry_counts": {
+      "Başlangıç Programları (Run/RunOnce)": 5,
+      "Windows Servisleri (Services)": 131,
+      "Kullanıcı Profilleri (ProfileList)": 4,
+      "Son Yazılan Yollar (TypedPaths)": 5,
+      "UserAssist (Çalıştırılan Uygulamalar)": 129,
+      "ShimCache (AppCompatCache)": 150
+    },
+    "live_usbstor_devices_detected": [
+      {
+        "name": "Kingston DataTraveler 3.0",
+        "serial": "E0D55EA57410E9B159D80011&0"
+      }
+    ],
+    "live_windows_processes_count": 222
+  },
+  "part_b_suspect_case_findings": {
+    "disk_ntfs": {
+      "format": "RAW Disk Image (.dd/.raw)",
+      "partitions": 1,
+      "mft_active_files": 5,
+      "mft_deleted_files": 2,
+      "carved_signatures": 3
+    },
+    "windows_registry_and_evtx": {
+      "hive_keys_parsed": 3,
+      "hive_forensic_artifacts": 0,
+      "evtx_events_parsed": 5,
+      "artifacts": {
+        "lnk": {
+          "target": "E:\\Exfil\\musteri_listesi.zip",
+          "size": 1048576
+        },
+        "pf": {
+          "exe": "POWERSHELL.EXE",
+          "run_count": 7,
+          "hash": "0xA1B2C3D4"
+        },
+        "recycle": {
+          "original_path": "C:\\Users\\AhmetK\\Desktop\\gizli_maas_tablosu.xlsx",
+          "deleted_size": 245760
+        },
+        "jumplist": {
+          "streams_extracted": 1,
+          "sample_targets": [
+            "E:\\Exfil\\musteri_listesi.zip"
+          ]
+        }
+      }
+    },
+    "browser_forensics": {
+      "history_urls": 3,
+      "downloads": 1,
+      "searches": 2,
+      "bookmarks": 2
+    },
+    "memory_forensics": {
+      "format": "Windows 64-bit Crash Dump (PAGEDU64)",
+      "kdbg_offsets": [
+        "0x00001000"
+      ],
+      "eprocess_candidates": [
+        "beacon_svc.exe"
+      ],
+      "pe_modules_count": 1,
+      "iocs": [
+        "http://198.51.100.42:8080/beacon.bin",
+        "198.51.100.42",
+        "192.168.1.50"
+      ]
+    },
+    "file_yara_and_network": {
+      "disguised_file": "tatil_fatura_ek.jpg",
+      "disguised_real_signature": "PE Executable (EXE/DLL)",
+      "extension_mismatch": true,
+      "entropy": 3.2945,
+      "sha256": "72bd4e5f789cb93e98fa06cdd348a8f19d1d300cd72007143a5c66ff6a479d63",
+      "yara_hits": [
+        "PowerShell_EncodedCommand",
+        "Suspicious_Exfil_Tools"
+      ],
+      "duplicate_groups": 1,
+      "pcap_dns_queries": [
+        "exfil.evil-c2.example"
+      ],
+      "pcap_http_iocs": [
+        "/stage2.bin",
+        "c2-drop.example"
+      ],
+      "eml_subject": "Acil Fatura Onayi - Q4 Exfil",
+      "eml_attachments": [
+        "fatura_ek.zip"
+      ]
+    },
+    "orchestrator_jobs_completed": 8,
+    "super_timeline_events": 46,
+    "correlation_graph": {
+      "nodes": 12,
+      "edges": 15
+    }
+  },
+  "exported_deliverables": [
+    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\investigation_findings.json",
+    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\adli_rapor_vak_2026_084.html",
+    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\adli_rapor_vak_2026_084.pdf",
+    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\vak_2026_084_case_uco.json",
+    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\vak_2026_084_timeline.jsonl",
+    "C:\\Users\\Eren\\Downloads\\adli-bilisim-inceleme-sistemi\\outputs\\vak_2026_084\\vak_2026_084_bodyfile.txt"
+  ]
+}

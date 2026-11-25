@@ -123,6 +123,7 @@ class DiskForensicsPage(QWidget):
         self.table = ForensicDataTable(self.mft_headers, self)
         self.table.rowSelected.connect(self._on_row_selected)
         tbl_lay.addWidget(self.table)
+        tbl_lay.addWidget(self.table.build_pagination_bar(table_card))
         h_splitter.addWidget(table_card)
 
         # Column 3: Metadata Panel
@@ -438,4 +439,11 @@ class DiskForensicsPage(QWidget):
         )
         self.meta_text.setPlainText(txt)
         preview = rec["resident_data"] if rec["resident_data"] else rec["raw_bytes"]
+        if not preview and self._current_image_path and os.path.isfile(self._current_image_path):
+            try:
+                with open(self._current_image_path, "rb") as rf:
+                    rf.seek(rec.get("image_offset", 0))
+                    preview = rf.read(1024)
+            except Exception:
+                preview = b""
         self.hex_viewer.load_bytes(preview, base_offset=rec["image_offset"])

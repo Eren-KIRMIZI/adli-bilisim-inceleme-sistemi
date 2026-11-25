@@ -513,7 +513,11 @@ class DiskForensicsEngine:
             if raw[:4] == b"\x00\x00\x00\x00":
                 continue
             if raw[:4] in (b"FILE", b"BAAD"):
-                parsed = self.parse_mft_record(raw, record_index=idx, image_offset=start_offset + idx * rec_size)
+                # Keep full raw_bytes only for first 512 records in memory; larger sets read on-demand from offset
+                parsed = self.parse_mft_record(
+                    raw, record_index=idx, image_offset=start_offset + idx * rec_size,
+                    store_raw_bytes=(len(records) < 512),
+                )
                 parsed["partition_index"] = partition_idx
                 self._attach_non_resident_preview(stream, total_size, part_offset, bytes_per_cluster, parsed)
                 records.append(parsed)
@@ -583,7 +587,9 @@ class DiskForensicsEngine:
         self._resolve_full_paths(records)
         return records
 
-    def parse_mft_record(self, raw_record: bytes, record_index: int = 0, image_offset: int = 0) -> Dict[str, Any]:
+    def parse_mft_record(
+        self, raw_record: bytes, record_index: int = 0, image_offset: int = 0, store_raw_bytes: bool = True
+    ) -> Dict[str, Any]:
         """Parse a single 1024-byte NTFS MFT FILE record with USA fixup & non-resident data runs."""
         buf = bytearray(raw_record)
         magic = bytes(buf[:4]).decode("ascii", "replace")
@@ -715,7 +721,7 @@ class DiskForensicsEngine:
             "fn_modified": fn_modified,
             "timestomping_suspect": timestomp_suspect,
             "attributes": attr_list,
-            "raw_bytes": bytes(raw_record),
+            "raw_bytes": bytes(raw_record) if store_raw_bytes else b"",
         }
 
     def parse_usn_journal(self, usn_path: str, max_records: int = 10000) -> List[Dict[str, Any]]:

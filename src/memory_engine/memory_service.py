@@ -7,10 +7,14 @@ with heuristic confidence and never presented as full PDB-verified process trees
 import ctypes
 from ctypes import wintypes
 import importlib.util
+import json
+import mmap
 import os
 import re
 import shutil
 import struct
+import subprocess
+import sys
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -54,13 +58,27 @@ class MemoryForensicsEngine:
             )
 
         scan_limit = min(size, max_scan_mb * 1024 * 1024)
+        if size > scan_limit:
+            warnings.append(
+                f"⚠️ Bellek hızlı tarama sınırı ({max_scan_mb} MB / {scan_limit:,} bayt) uygulandı; "
+                f"toplam döküm {size:,} bayt. Tam analiz için Volatility 3 köprüsünü kullanın."
+            )
         pe_modules: List[Dict[str, Any]] = []
         iocs: List[Dict[str, Any]] = []
         kdbg_blocks: List[Dict[str, Any]] = []
         eprocess_candidates: List[Dict[str, Any]] = []
 
+        # Stream memory image via read-only mmap (falls back to chunked read for tiny/empty files)
         with open(dump_path, "rb") as f:
-            data = f.read(scan_limit)
+            if scan_limit == 0:
+                data: Any = b""
+            else:
+                try:
+                    mm = mmap.mmap(f.fileno(), length=scan_limit, access=mmap.ACCESS_READ)
+                    data = mm[:scan_limit]
+                    mm.close()
+                except Exception:
+                    data = f.read(scan_limit)
 
         # 1. Scan for KDBG kernel debug blocks & parse pointers if large enough
         pos = 0
@@ -213,6 +231,66 @@ class MemoryForensicsEngine:
             kernel32.CloseHandle(snap)
 
         return {"supported": True, "captured_at": datetime.utcnow(), "processes": processes}
+
+    @classmethod
+    def run_volatility3_plugin(
+        cls,
+        dump_path: str,
+        plugin: str = "windows.pslist",
+        timeout: int = 120,
+    ) -> Dict[str, Any]:
+        """Bridge to external Volatility 3 (-r json) with Windows 11 symbol-table diagnostics."""
+        if not os.path.isfile(dump_path):
+            raise FileNotFoundError(dump_path)
+        vol_info = cls.detect_volatility3()
+        if not vol_info["available"]:
+            return {
+                "supported": False,
+                "plugin": plugin,
+                "rows": [],
+                "error": "Volatility 3 sistemde kurulu değil (`pip install volatility3` veya `vol` CLI gerekli).",
+                "symbol_warning": None,
+            }
+
+        cmd = (
+            [vol_info["cli_path"], "-f", dump_path, "-r", "json", plugin]
+            if vol_info.get("cli_path")
+            else [sys.executable, "-m", "volatility3", "-f", dump_path, "-r", "json", plugin]
+        )
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
+            stderr = (proc.stderr or "").strip()
+            symbol_warn = None
+            if any(k in stderr.lower() for k in ("symbol", "pdb", "isf", "unsatisfied", "translation layer")):
+                symbol_warn = (
+                    "⚠️ Volatility 3 sembol / PDB veya katman uyumluluk uyarısı tespit edildi "
+                    "(örn. güncel Windows 11 ISF sembol tablosu eksik olabilir)."
+                )
+            rows: List[Dict[str, Any]] = []
+            stdout = (proc.stdout or "").strip()
+            if stdout:
+                try:
+                    parsed = json.loads(stdout)
+                    if isinstance(parsed, list):
+                        rows = [r for r in parsed if isinstance(r, dict)]
+                except json.JSONDecodeError:
+                    pass
+            return {
+                "supported": True,
+                "plugin": plugin,
+                "returncode": proc.returncode,
+                "rows": rows,
+                "error": None if proc.returncode == 0 else (stderr or f"Çıkış kodu {proc.returncode}"),
+                "symbol_warning": symbol_warn,
+            }
+        except Exception as exc:
+            return {
+                "supported": True,
+                "plugin": plugin,
+                "rows": [],
+                "error": str(exc),
+                "symbol_warning": None,
+            }
 
 
 def create_synthetic_memory_dump(output_path: str) -> str:

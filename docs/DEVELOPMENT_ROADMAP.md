@@ -22,7 +22,8 @@
 | 18 | **DFIR Dalga 3 (P2)**: Bellek KDBG/`Proc` pool heuristiği + Volatility 3 algılama, yerel SQLite Hash Set (NSRL/IOC) & YARA-stili tarayıcı (52 test) | Tamamlandı |
 | 19 | **DFIR Dalga 4 (Genişletilmiş Modüller)**: BitLocker (`-FVE-FS-`), özyinelemeli `BagMRU` ShellBags + Amcache kovan çıkarımı, Super-Timeline çoklu artefakt birleştirme, çoklu modül HTML/PDF raporlama, NSRL/IOC içe aktarma & YARA klasör tarama, saf Python `.eml` (E-posta) ve `.pcap` / Hosts ağ ayrıştırıcıları (56 test) | Tamamlandı |
 | 20 | **Adli Güvenilirlik, Güvenlik & Performans Sertleştirme**: Write-Blocker `False` varsayılanı, katı hash doğrulama ayrımı, hash zincirli append-only `AuditLog` + `archive_case`, Jinja2 autoescape + PDF escaping (XSS koruması), dürüst `UsbService`, `StatusBadge` tam token eşleştirme, tek geçişli streaming hash (`FileAnalysisService`), taşınabilir `mbcs` fallback, MS-CFB Mini-Stream Jump List, NTFS `$SI`/`$FN` timestomping + ADS + EWF Adler-32 sağlama, `visits` + WAL tarayıcı okuması, `QThread` arka plan çalışanları (`EvidencePage`/`DiskForensicsPage`) ve WCAG AA kontrast güncellemesi (63 test) | Tamamlandı |
+| 21 | **Ölçek, Orkestrasyon & Birlikte Çalışabilirlik**: Sayfalı `ForensicDataTable` + `ForensicTableModel` (`100k+` satır), bellek dostu MFT önizleme, `PluginRegistry` + `AnalysisOrchestrator` + arka plan ingest kuyruğu, **CASE/UCO JSON-LD**, **Timesketch JSONL** ve **Sleuth Kit BodyFile** dışa aktarımı, Volatility 3 JSON köprüsü (`pslist`/`pstree`/`netscan`/`cmdline`/`malfind`) + `mmap` kesme uyarısı, canlı DB KPI kartları, `pyproject.toml` ve `.github/workflows/ci.yml` (66 test) | Tamamlandı |
 
 ## İsteğe Bağlı İleri Modüller (Gelecek Eklentiler)
+- Kurumsal çoklu kullanıcı/rol yetkilendirmesi (RBAC) ve NIST CFReDS harici referans doğrulama veri setleri
 - E-posta PST/OST ikili kutusu ve SRUM (`SRUDB.dat`) ESE veritabanı ayrıştırıcısı
-- Tam çekirdek PDB sembol sunucusu (DWARF/PDB) bellek çerçeve çözümlemesi

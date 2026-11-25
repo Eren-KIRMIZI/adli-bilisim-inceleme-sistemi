@@ -123,8 +123,6 @@ class UsbService:
                     f"Canlı sistemden {len(extracted_records)} adet USBSTOR kaydı salt-okunur çıkarıldı.",
                 )
                 s.commit()
-                for rec in extracted_records:
-                    s.refresh(rec)
 
         return extracted_records
 
@@ -262,8 +260,6 @@ class UsbService:
                     f"{os.path.basename(hive_path)} içinden {len(extracted)} USB kaydı çıkarıldı.",
                 )
                 s.commit()
-                for rec in extracted:
-                    s.refresh(rec)
 
         return extracted
 

@@ -2,13 +2,18 @@
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, 
-    QPushButton, QGridLayout, QMessageBox, QSplitter
+    QPushButton, QGridLayout, QMessageBox, QSplitter, QDialog,
+    QFileDialog, QTextEdit
 )
 from PySide6.QtCore import Qt
 from src.case_engine.case_service import CaseService
 from src.evidence_engine.evidence_service import EvidenceService
 from src.usb_engine.usb_service import UsbService
-from src.database.models import init_db, AuditLog, Case, Evidence, UsbDeviceRecord
+from src.core.orchestrator import AnalysisOrchestrator
+from src.ui.workers import FunctionWorker
+from src.database.models import (
+    init_db, AuditLog, Case, Evidence, UsbDeviceRecord, ForensicArtifact, verify_audit_chain
+)
 from src.database.seed import seed_database_if_empty
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.status_indicator import StatusBadge
@@ -41,10 +46,10 @@ class DashboardPage(QWidget):
         kpi_grid = QGridLayout()
         kpi_grid.setSpacing(12)
 
-        self.card_cases = self._create_kpi_card("Toplam Vaka", "1 Aktif", "0 Kapanan / Arşiv", "📁")
-        self.card_evidence = self._create_kpi_card("Delil Envanteri", "3 Delil", "596 GB Toplam Boyut", "💾")
-        self.card_artifacts = self._create_kpi_card("Artefakt Analizi", "4 USB Kaydı", "1 Şüpheli Cihaz İşaretli", "🔌")
-        self.card_integrity = self._create_kpi_card("Bütünlük & Hash", "%100 Doğrulandı", "SHA-256 Eşleşme Başarılı", "🔐")
+        self.card_cases = self._create_kpi_card("Toplam Vaka", "-", "Yükleniyor...", "📁")
+        self.card_evidence = self._create_kpi_card("Delil Envanteri", "-", "Yükleniyor...", "💾")
+        self.card_artifacts = self._create_kpi_card("Artefakt Analizi", "-", "Yükleniyor...", "🔌")
+        self.card_integrity = self._create_kpi_card("Bütünlük & Hash", "-", "Yükleniyor...", "🔐")
 
         kpi_grid.addWidget(self.card_cases, 0, 0)
         kpi_grid.addWidget(self.card_evidence, 0, 1)
@@ -76,6 +81,10 @@ class DashboardPage(QWidget):
         btn_report = QPushButton("📑 Adli Rapor Oluştur")
         btn_report.clicked.connect(lambda: self._goto_page(12))
         action_bar.addWidget(btn_report)
+
+        btn_ingest = QPushButton("🚀 Otomatik Analiz Kuyruğu")
+        btn_ingest.clicked.connect(self._open_ingest_dialog)
+        action_bar.addWidget(btn_ingest)
 
         action_bar.addStretch()
         main_layout.addLayout(action_bar)
@@ -203,18 +212,40 @@ class DashboardPage(QWidget):
         return card
 
     def refresh_data(self):
-        """Reload database records and update UI indicators."""
+        """Reload database records and compute live forensic metrics (zero hardcoded KPIs)."""
         with self.Session() as s:
-            case_count = s.query(Case).count()
-            evd_count = s.query(Evidence).count()
+            all_cases = s.query(Case).all()
+            active_cases = sum(1 for c in all_cases if c.status in ("open", "in_progress"))
+            closed_cases = len(all_cases) - active_cases
+
+            evds = s.query(Evidence).all()
+            evd_count = len(evds)
+            total_cap_gb = sum((e.capacity_bytes or 0) for e in evds) / (1024 ** 3)
+            verified_evds = sum(1 for e in evds if e.status == "verified")
+            mismatch_evds = sum(1 for e in evds if e.status == "hash_mismatch")
+
             usb_count = s.query(UsbDeviceRecord).count()
             susp_count = s.query(UsbDeviceRecord).filter(UsbDeviceRecord.is_suspicious == True).count()
+            art_count = s.query(ForensicArtifact).count()
 
-            # Update KPI Cards
-            self.card_cases.findChild(QLabel, "cardVal").setText(f"{case_count} Aktif Vaka")
+            audit_chk = verify_audit_chain(s)
+
+            # Update ALL 4 KPI Cards dynamically from DB
+            self.card_cases.findChild(QLabel, "cardVal").setText(f"{active_cases} Aktif Vaka")
+            self.card_cases.findChild(QLabel, "cardSub").setText(f"{closed_cases} Kapanan / Arşiv")
+
             self.card_evidence.findChild(QLabel, "cardVal").setText(f"{evd_count} Adli Delil")
-            self.card_artifacts.findChild(QLabel, "cardVal").setText(f"{usb_count} USB Kaydı")
-            self.card_artifacts.findChild(QLabel, "cardSub").setText(f"{susp_count} Şüpheli Tespit Edildi")
+            self.card_evidence.findChild(QLabel, "cardSub").setText(f"{total_cap_gb:.1f} GB Toplam Kapasite")
+
+            self.card_artifacts.findChild(QLabel, "cardVal").setText(f"{usb_count} USB | {art_count} Artefakt")
+            self.card_artifacts.findChild(QLabel, "cardSub").setText(f"{susp_count} Şüpheli USB İşaretli")
+
+            pct = int((verified_evds * 100) / evd_count) if evd_count else 0
+            chain_txt = "Zincir Sağlam" if audit_chk["intact"] else "⚠️ Zincir Bozuk!"
+            self.card_integrity.findChild(QLabel, "cardVal").setText(f"%{pct} Doğrulandı")
+            self.card_integrity.findChild(QLabel, "cardSub").setText(
+                f"{verified_evds}/{evd_count} Delil ({mismatch_evds} Uyuşmaz) | {chain_txt}"
+            )
 
             # Update Audit Log Table
             logs = s.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(50).all()
@@ -225,9 +256,65 @@ class DashboardPage(QWidget):
                     "İşlem Türü": log.action,
                     "Sorumlu Uzman": log.investigator,
                     "Açıklama": log.details,
-                    "Bütünlük Hash": log.verification_hash or "Doğrulandı"
+                    "Bütünlük Hash": (log.verification_hash[:16] + "...") if log.verification_hash else "Zincirsiz"
                 })
             self.table_audit.set_records(records)
+
+    def _open_ingest_dialog(self):
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Otomatik Çoklu-Modül Analiz Kuyruğu (Ingest Orchestrator)")
+        dlg.setMinimumSize(620, 400)
+        lay = QVBoxLayout(dlg)
+
+        info = QLabel("Kayıtlı eklentiler üzerinden dosya seçip arka plan iş kuyruğunda analiz edin:")
+        lay.addWidget(info)
+
+        out_log = QTextEdit()
+        out_log.setReadOnly(True)
+        out_log.setStyleSheet("font-family: Consolas; font-size: 11px;")
+        orch = AnalysisOrchestrator()
+        plugins_txt = "\n".join(f"• {p.plugin_id}: {p.name} v{p.version} {p.extensions}" for p in orch.registry.list_plugins())
+        out_log.setPlainText(f"YÜKLÜ ANALİZ EKLENTİLERİ:\n{plugins_txt}\n\nHazır.")
+        lay.addWidget(out_log, 1)
+
+        btn_row = QHBoxLayout()
+        add_btn = QPushButton("📁 Dosya Seç & Kuyruğa Çalıştır")
+        add_btn.setObjectName("primaryBtn")
+        exp_uco = QPushButton("📤 CASE/UCO JSON-LD Dışa Aktar")
+        btn_row.addWidget(add_btn)
+        btn_row.addWidget(exp_uco)
+        btn_row.addStretch()
+        lay.addLayout(btn_row)
+
+        def run_ingest():
+            files, _ = QFileDialog.getOpenFileNames(dlg, "Analiz Edilecek Delil / Artefakt Dosyalarını Seç")
+            if not files:
+                return
+            for fp in files:
+                job = orch.submit_job(case_id=1, source_path=fp)
+                out_log.append(f"[QUEUED] {job.plugin_id} -> {fp}")
+            add_btn.setEnabled(False)
+            worker = FunctionWorker(orch.run_pending_jobs, parent=dlg)
+            dlg._ingest_worker = worker
+
+            def done(jobs):
+                add_btn.setEnabled(True)
+                for j in jobs:
+                    out_log.append(f"[{j.status.value}] {j.plugin_id}: {j.findings_count} bulgu ({j.elapsed_sec}s)" + (f" | Hata: {j.error}" if j.error else ""))
+                self.refresh_data()
+
+            worker.finished_result.connect(done)
+            worker.start()
+
+        def export_uco():
+            fp, _ = QFileDialog.getSaveFileName(dlg, "CASE/UCO JSON-LD Kaydet", "case_uco_bundle.json", "JSON (*.json)")
+            if fp:
+                orch.export_case_uco_jsonld(1, fp)
+                out_log.append(f"[EXPORT] CASE/UCO JSON-LD yazıldı -> {fp}")
+
+        add_btn.clicked.connect(run_ingest)
+        exp_uco.clicked.connect(export_uco)
+        dlg.exec()
 
     def set_active_case(self, case_id: int):
         """Update active case card from selected case ID."""

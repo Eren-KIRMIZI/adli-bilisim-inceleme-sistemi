@@ -4,11 +4,12 @@ import os
 from typing import Dict, Any, List
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QPushButton,
-    QSplitter, QTabWidget, QTextEdit, QFileDialog, QMessageBox
+    QSplitter, QTabWidget, QTextEdit, QFileDialog, QMessageBox, QComboBox
 )
 from PySide6.QtCore import Qt
 
 from src.memory_engine.memory_service import MemoryForensicsEngine, create_synthetic_memory_dump
+from src.ui.workers import FunctionWorker
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.search_field import ForensicSearchField
 from src.ui.components.data_table import ForensicDataTable
@@ -26,6 +27,7 @@ class MemoryAnalysisPage(QWidget):
         self._ioc_rows: List[Dict[str, Any]] = []
         self._proc_rows: List[Dict[str, Any]] = []
         self._eproc_rows: List[Dict[str, Any]] = []
+        self._current_dump_path: str = ""
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(24, 18, 24, 18)
@@ -58,6 +60,17 @@ class MemoryAnalysisPage(QWidget):
         live_btn = QPushButton("⚡ Canlı Süreç Anlık Görüntüsü")
         live_btn.clicked.connect(self._capture_live_processes)
         toolbar.addWidget(live_btn)
+
+        self.vol_plugin_cb = QComboBox()
+        self.vol_plugin_cb.addItems([
+            "windows.pslist", "windows.pstree", "windows.netscan", "windows.cmdline", "windows.malfind"
+        ])
+        self.vol_plugin_cb.setFixedWidth(155)
+        toolbar.addWidget(self.vol_plugin_cb)
+
+        vol_btn = QPushButton("🌉 Volatility 3 Çalıştır")
+        vol_btn.clicked.connect(self._run_volatility3_async)
+        toolbar.addWidget(vol_btn)
         main_layout.addLayout(toolbar)
 
         # Warning / Honesty Banner
@@ -125,6 +138,7 @@ class MemoryAnalysisPage(QWidget):
 
     def load_dump(self, path: str):
         try:
+            self._current_dump_path = path
             res = self.engine.inspect_memory_dump(path)
             is_known = "Bilinmeyen" not in res["format"]
             self.format_badge.set_status(res["format"], "verified" if is_known else "warning")
@@ -206,6 +220,33 @@ class MemoryAnalysisPage(QWidget):
 
     def _on_ioc_selected(self, row: Dict[str, Any]):
         self.summary_view.setPlainText(f"BELLEK IOC BULGUSU\nTür:    {row['Tür']}\nOffset: {row['Offset']}\nDeğer:  {row['Değer']}")
+
+    def _run_volatility3_async(self):
+        if not self._current_dump_path or not os.path.isfile(self._current_dump_path):
+            QMessageBox.information(self, "RAM İmajı Gerekli", "Volatility 3 eklentisi çalıştırmak için önce bir bellek dökümü yükleyin.")
+            return
+        plugin = self.vol_plugin_cb.currentText()
+        self.format_badge.set_status(f"⏳ Volatility 3 ({plugin})...", "info")
+        worker = FunctionWorker(self.engine.run_volatility3_plugin, self._current_dump_path, plugin=plugin, parent=self)
+        self._vol_worker = worker
+
+        def on_done(res: dict):
+            if not res.get("supported"):
+                self.format_badge.set_status("Volatility 3 Kurulumu Yok", "warning")
+                self.summary_view.append(f"\n[VOLATILITY 3] {res.get('error')}")
+                return
+            if res.get("symbol_warning"):
+                self.warning_lbl.setText(res["symbol_warning"])
+            if res.get("error"):
+                self.format_badge.set_status("Volatility 3 Uyarısı", "warning")
+                self.summary_view.append(f"\n[VOLATILITY 3 ({plugin})] Hata: {res['error']}")
+                return
+            rows = res.get("rows", [])
+            self.format_badge.set_status(f"Volatility 3: {len(rows)} Kayıt", "verified")
+            self.summary_view.append(f"\n[VOLATILITY 3 ({plugin})] {len(rows)} kayıt başarıyla ayrıştırıldı.")
+
+        worker.finished_result.connect(on_done)
+        worker.start()
 
     def _on_eproc_selected(self, row: Dict[str, Any]):
         self.summary_view.setPlainText(

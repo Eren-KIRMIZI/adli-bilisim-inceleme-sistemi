@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QPainter, QColor, QFont
 
 from src.timeline_engine.timeline_service import TimelineService
+from src.core.orchestrator import AnalysisOrchestrator
 from src.ui.styles.tokens import get_theme
 from src.ui.components.breadcrumb import Breadcrumb
 from src.ui.components.search_field import ForensicSearchField
@@ -134,6 +135,11 @@ class TimelinePage(QWidget):
         export_btn = QPushButton("CSV Dışa Aktar")
         export_btn.clicked.connect(lambda: self.table.export_to_csv())
         toolbar.addWidget(export_btn)
+
+        jsonl_btn = QPushButton("JSONL / BodyFile")
+        jsonl_btn.setToolTip("Timesketch (JSONL) veya Sleuth Kit (BodyFile) formatında dışa aktarır.")
+        jsonl_btn.clicked.connect(self._export_interchange)
+        toolbar.addWidget(jsonl_btn)
         main_layout.addLayout(toolbar)
 
         # 3. Timeline Density Chart Card
@@ -156,7 +162,13 @@ class TimelinePage(QWidget):
         headers = ["Zaman (UTC)", "Olay Türü", "Kullanıcı", "Açıklama", "Güvenilirlik", "Kaynak"]
         self.table = ForensicDataTable(headers, self)
         self.table.rowSelected.connect(self._on_event_selected)
-        splitter.addWidget(self.table)
+
+        left_box = QWidget()
+        lb_lay = QVBoxLayout(left_box)
+        lb_lay.setContentsMargins(0, 0, 0, 0)
+        lb_lay.addWidget(self.table)
+        lb_lay.addWidget(self.table.build_pagination_bar(left_box))
+        splitter.addWidget(left_box)
 
         right = QFrame()
         right.setObjectName("surfaceCard")
@@ -271,6 +283,21 @@ class TimelinePage(QWidget):
             QMessageBox.information(self, "Super-Timeline Güncellendi", f"{added} olay UTC zaman çizelgesine eklendi.")
         except Exception as e:
             QMessageBox.critical(self, "Zaman Çizelgesi İçe Aktarma Hatası", str(e))
+
+    def _export_interchange(self):
+        fp, filt = QFileDialog.getSaveFileName(
+            self,
+            "Zaman Çizelgesi Dışa Aktar",
+            "super_timeline.jsonl",
+            "Timesketch JSONL (*.jsonl);;Sleuth Kit BodyFile (*.body)"
+        )
+        if not fp:
+            return
+        if fp.lower().endswith(".body") or "BodyFile" in filt:
+            AnalysisOrchestrator.export_timeline_bodyfile(self._all_events, fp)
+        else:
+            AnalysisOrchestrator.export_timeline_jsonl(self._all_events, fp)
+        QMessageBox.information(self, "Dışa Aktarıldı", f"Zaman çizelgesi kaydedildi:\n{fp}")
 
     def _set_anchor_event(self):
         if self._selected_dt:

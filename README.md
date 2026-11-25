@@ -12,8 +12,12 @@ Platformda klasik e-posta/kullanıcı adı girişi yerine adli bilişim laboratu
 
 ### Nasıl Giriş Yapılır? (Adım Adım Akış)
 1. **USB Güvenlik Anahtarı Beklenir (`WAITING_USB`):** Uygulama açıldığında çıkarılabilir USB sürücüleri gerçek zamanlı izlenir.
+---
 
-https://github.com/user-attachments/assets/663d2190-e150-4be2-afaa-24fe8562fb1e
+
+https://github.com/user-attachments/assets/07a73ba5-f65a-42e4-b00d-24e0be05194b
+
+
 ---
 
    ![USB Güvenlik Anahtarı Bekleniyor](docs/screenshots/00_usb_login_waiting.png)

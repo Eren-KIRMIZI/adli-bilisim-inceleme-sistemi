@@ -12,6 +12,10 @@ Platformda klasik e-posta/kullanıcı adı girişi yerine adli bilişim laboratu
 
 ### Nasıl Giriş Yapılır? (Adım Adım Akış)
 1. **USB Güvenlik Anahtarı Beklenir (`WAITING_USB`):** Uygulama açıldığında çıkarılabilir USB sürücüleri gerçek zamanlı izlenir.
+
+https://github.com/user-attachments/assets/663d2190-e150-4be2-afaa-24fe8562fb1e
+---
+
    ![USB Güvenlik Anahtarı Bekleniyor](docs/screenshots/00_usb_login_waiting.png)
 2. **Canlı Ed25519 Challenge-Response İmza Doğrulaması (`1. Doğrulama`):** Kayıtlı USB bellek (ör. `Key D:`) takıldığında sistem yalnızca sürücü harfine veya kapasiteye bakmaz; her girişte **32 baytlık taze kriptografik rastgele challenge** üretir, USB üzerindeki `.forensic_key/usb_private_key.pem` (**Ed25519** özel anahtarı) ile imzalar ve sistemdeki açık anahtarla doğrular.
 3. **Kişisel Güvenlik Şifresi (`2. Doğrulama`):** İmza doğrulandığında ekranda **`DİJİTAL İMZA DOĞRULANDI`** bildirimi açılır ve **PBKDF2-HMAC-SHA256 (200.000 iterasyon + salt)** ile korunan kişisel güvenlik şifresi istenir. 5 hatalı denemede geçici kilitleme (lockout) devreye girer ve tüm denemeler hash zincirli `AuditLog` tablosuna işlenir.
